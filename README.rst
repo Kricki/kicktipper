@@ -12,9 +12,11 @@ Kicktipper
 Tool to upload automatically generated tipps to kicktipp.de
 
 * Free software: ISC license
-* Documentation: https://kicktipper.readthedocs.org.
 
 Features
 --------
 
-* TODO
+* Supports German Bundesliga, season 2015/16
+* Generation of random scores
+* Calculation of the "expected score": From a simple model, the program predicts the "most likely" outcome of each match. The team strengths can be individually set by the user.
+* GUI made with TK
