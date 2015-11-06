@@ -1,0 +1,5 @@
+requests == 2.8.1
+robobrowser == 0.5.3.egg
+setuptools == 3.3.egg
+beautifulsoup4 == 4.4.1
+numpy == 1.10.1
