@@ -280,7 +280,6 @@ class ScoreCalculator:
         :param Team team2: Away team
         :return: int score for team 1 and score for team2
         """
-
         score1 = round(mu/2*team1.offense_strength - team2.defense_strength + home_team_advantage, 0)
         score2 = round(mu/2*team2.offense_strength - team1.defense_strength, 0)
 
@@ -402,7 +401,7 @@ class KicktippAPI:
     def logout(self):
         self.browser.open(self.url_logout)
         if self.browser.url==self.url_logout:
-            print("Logout succesful")
+            print("Logout successful")
         else:
             print("Logout failed")
 
@@ -412,18 +411,19 @@ class KicktippAPI:
         The user must be logged in.
 
         :return: 9x2 matrix (9 rows, 2 columns), each row containing the name of the teams for one match
-                None is returned, if fetching was not succesful.
+                None is returned, if fetching was not successful.
         """
         self.browser.open(self.url_tippabgabe)
-        if self.browser.url == self.url_tippabgabe: # redirection succesful?
-            soup = BeautifulSoup(self.browser.response.content, "lxml") # get BeatifulSoup object from RoboBrowser
+        if self.browser.url == self.url_tippabgabe: # redirection successful?
+            soup = BeautifulSoup(self.browser.response.content, "html.parser") # get BeautifulSoup object from RoboBrowser
             data = soup.find_all('td', class_='nw')
 
             teams = []
             for element in data:
                 if element.string is not None:  # not another id tag (element is not a string)
                     if not re.match('^[0-9]{2}\.', element.string):  # not a date. RegExp: First two symbols are digits, followed by dot.
-                        teams.append(element.string)
+                        if not re.match('[0-9]:[0-9]', element.string):  # not a score (e.g. '2:1')
+                            teams.append(element.string)
 
             games = [[None]*2 for _ in range(9)]
 
@@ -448,8 +448,6 @@ class KicktippAPI:
 
         match_number = 0
         for element in tipp_form.keys():
-            print(element)
-            print(match_number)
             if "heimTipp" in element:
                 tipp_form[element].value = scores[match_number][0]
             elif "gastTipp" in element:

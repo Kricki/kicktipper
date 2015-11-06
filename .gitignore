@@ -46,3 +46,4 @@ docs/_build
 /env
 todo.txt
 /.idea
+/kicktipper/config.ini

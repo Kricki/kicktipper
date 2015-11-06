@@ -76,7 +76,7 @@ class MainWidgets(ttk.Frame):
         ttk.Separator(master,orient=tk.HORIZONTAL).grid(row=15, columnspan=10, sticky='EW')
         self.v_statusbar = tk.StringVar()
         self.label_statusbar = ttk.Label(self, textvariable=self.v_statusbar)
-        self.label_statusbar.grid(row=17, column=0, sticky='W')
+        self.label_statusbar.grid(row=17, column=0, columnspan=2, sticky='W')
 
 
 class FileMenu(ttk.Frame):

@@ -14,7 +14,7 @@ VERSION = 0.1
 class Model:
     def __init__(self):
         self.liga = tipper.Liga("Bundesliga")
-        self.team_array = []
+        self.team_array = [None]*18
         self.home_team_advantage = 0
         self.mu = 0
         self.group = ""
@@ -27,7 +27,8 @@ class Model:
         self.liga.read_db()
 
         for kk in range(18):
-            self.team_array.append(self.liga.get_team_object_from_index(kk+1))
+            #self.team_array.append(self.liga.get_team_object_from_index(kk+1))
+            self.team_array[kk] = self.liga.get_team_object_from_index(kk+1)
             #self.liga.add_team(self.team_array[kk])
 
     def update_db(self):
@@ -127,13 +128,12 @@ class Controller:
         team_settings_dialog.show(self._master)
 
         if not team_settings_dialog.canceled:
-            for kk in range(18):
-                team = self.model.liga.get_team_object_from_index(kk+1)
-                team.name = team_settings_dialog.team_names[kk]
-                team.scored_goals = int(team_settings_dialog.scored_goals[kk])
-                team.defense_strength = float(team_settings_dialog.defense_strengths[kk])
-                team.offense_strength = team.compute_offense_strength_from_scored_goals(self.model.home_team_advantage, self.model.mu)
-                self.model.update_db()
+            for team, team_index in self.model.liga.team_dict.items():  # iterate over all team objects in liga
+                team.name = team_settings_dialog.team_names[team_index-1]
+                team.scored_goals = int(team_settings_dialog.scored_goals[team_index-1])
+                team.defense_strength = float(team_settings_dialog.defense_strengths[team_index-1])
+                team.compute_offense_strength_from_scored_goals(self.model.home_team_advantage, self.model.mu)
+            self.model.update_db()
 
     def generate_score(self):
         if(self.main_view.main_widgets.v_score_generator.get()=="xS"):
