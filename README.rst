@@ -13,3 +13,8 @@ Features
 * Generation of random scores
 * Calculation of the "expected score": From a simple model, the program predicts the "most likely" outcome of each match. The team strengths can be individually set by the user.
 * GUI made with TK
+
+How to run
+--------
+
+Simply 'python3 kicktipper.py'

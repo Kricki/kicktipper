@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
-__author__ = 'kricki'
-
 import tkinter as tk
 from tkinter import ttk
-import os
+
+__author__ = 'Kricki (https://github.com/Kricki)'
+
 
 
 class Dialog(tk.Toplevel):

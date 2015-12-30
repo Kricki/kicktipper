@@ -42,8 +42,17 @@ output/*/index.html
 # Sphinx
 docs/_build
 
-/kicktipper/my_tests
 /env
 todo.txt
 /.idea
+
+/kicktipper/my_tests
+/kicktipper/build
+/kicktipper/dist
+/kicktipper/__pycache__
+
 /kicktipper/config.ini
+/kicktipper/Bundesliga.sqlite
+/kicktipper/kicktipper.spec
+
+

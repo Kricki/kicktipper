@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
-__author__ = 'kricki'
-
 import numpy
 from robobrowser import RoboBrowser
 from bs4 import BeautifulSoup
-import re  #RegExp
+import re  # RegExp
+import sqlite3
 
 import tools
 
-import sqlite3
+
+__author__ = 'Kricki (https://github.com/Kricki)'
 
 
 class Team:
@@ -104,15 +104,15 @@ class Liga:
         :param team: Team object
         """
 
-        # add team object to member variable "team_dict" (that is a dictionary (pairs key:value = team object : team index))
-        self.team_dict.update({team:team.index})
+        # add team object to member variable "team_dict" (that is a dictionary (pairs key:value=team object:team index))
+        self.team_dict.update({team : team.index})
         self.no_of_teams += 1
 
     def get_team_object_from_index(self, index):
         """ Returns the team object with the given index.
 
         :param int index: Team index
-        :return: Team object. None, if no team with <index> is found,
+        :return: Team object. None, if no team with <index> is found.
         """
 
         for team in self.team_dict:
@@ -129,7 +129,7 @@ class Liga:
         """
 
         for team in self.team_dict:
-            if team.name==team_name:
+            if team.name == team_name:
                 return team.index
 
         return None
@@ -144,7 +144,7 @@ class Liga:
         """
 
         for team in self.team_dict:
-            if team.name==team_name:
+            if team.name == team_name:
                 return team
 
         if exact_match:
@@ -180,7 +180,7 @@ class Liga:
                 closest_name = team.name
                 p_max = p
 
-        #return self.team_dict[closest_name], p_max
+        # return self.team_dict[closest_name], p_max
         return self.get_team_object_from_team_name(closest_name, exact_match=True), p_max
 
     def create_db_table(self, name=None):
@@ -238,7 +238,8 @@ class Liga:
 
         The content populates the Liga, i.e. team objects are added to the current Liga instance.
 
-        :param string name: Name of the database. Filename will be <name>.sqlite. Default name is the name of the Liga object.
+        :param string name: Name of the database. Filename will be <name>.sqlite.
+            Default name is the name of the Liga object.
         :return: content of the database as a tuple
         """
 
@@ -271,24 +272,37 @@ class ScoreCalculator:
 
     """
 
-    def expected_score(self, mu, home_team_advantage, team1, team2):
+    @staticmethod
+    def expected_score(mu, home_team_advantage, team1, team2):
         """ Calculates "expected score" for the match between team1 and team2
 
         :param double mu: expectation value for the number of scored goals for the match
-        :param double home_team_advantage: Factor to account for the advante of the home team
+        :param double home_team_advantage: Factor to account for the advantage of the home team
         :param Team team1: Home team
         :param Team team2: Away team
         :return: int score for team 1 and score for team2
         """
-        score1 = round(mu/2*team1.offense_strength - team2.defense_strength + home_team_advantage, 0)
-        score2 = round(mu/2*team2.offense_strength - team1.defense_strength, 0)
+        score1 = mu/2*team1.offense_strength - team2.defense_strength + home_team_advantage
+        score2 = mu/2*team2.offense_strength - team1.defense_strength
+
+        d = score1-score2
+
+        score1 = round(score1, 0)
+        score2 = round(score2, 0)
+
+        if score1 == score2:  # check if the draw ist justified...
+            if d > 0.5:  # team1 is much better
+                score1 += 1
+            if d < -0.5:  # team2 is much better
+                score2 += 1
 
         return int(score1), int(score2)
 
-    def random_score(self, mu, draw_allowed=True):
+    @staticmethod
+    def random_score(mu, draw_allowed=True):
         """ Generates random score, where the individual team score is drawn from a Poissonian distribution
-        :param double mu: the expectation value for the number of scored goals for the match. I.e. mu/2 is the expectation value for
-                    the number of goals scored per team
+        :param double mu: the expectation value for the number of scored goals for the match. I.e. mu/2 is the
+            expectation value for the number of goals scored per team.
         :param bool draw_allowed: A draw is a legal result. Default: True
 
         :return: int score for team 1 and score for team2
@@ -297,16 +311,16 @@ class ScoreCalculator:
 
         result_ok = False
 
-        while(not result_ok):
+        while not result_ok:
             score1 = numpy.random.poisson(mu/2)
             score2 = numpy.random.poisson(mu/2)
             if draw_allowed:
                 result_ok = True
             else:
-                if (score1 != score2):
+                if score1 != score2:
                     result_ok = True
 
-        return (score1, score2)
+        return score1, score2
 
 
 class KicktippAPI:
@@ -324,7 +338,6 @@ class KicktippAPI:
         self._url_tippabgabe = self.url + "tippabgabe"
 
         self._browser = RoboBrowser()
-
 
     @property
     def name(self):
@@ -393,14 +406,14 @@ class KicktippAPI:
         self._browser.submit_form(signup_form)
 
         # print(self.browser.state.response.history)
-        if self.browser.url=="https://www.kicktipp.de/"+self.name+"/startseite":
+        if self.browser.url == "https://www.kicktipp.de/"+self.name+"/startseite":
             return 0
         else:
             return -1
 
     def logout(self):
         self.browser.open(self.url_logout)
-        if self.browser.url==self.url_logout:
+        if self.browser.url == self.url_logout:
             print("Logout successful")
         else:
             print("Logout failed")

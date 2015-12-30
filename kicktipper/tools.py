@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
+from difflib import SequenceMatcher
+
 """ This file contains some helper tools.
 
 """
 
-__author__ = 'kricki'
-
-from difflib import SequenceMatcher
+__author__ = 'Kricki (https://github.com/Kricki)'
 
 
 def similar(a, b):

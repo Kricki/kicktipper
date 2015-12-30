@@ -1,6 +1,5 @@
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-__author__ = 'kricki'
-
 import tkinter as tk
 from tkinter import messagebox as tkmessagebox
 import configparser
@@ -8,7 +7,8 @@ import configparser
 import tipper
 import gui
 
-VERSION = 0.1
+__author__ = 'Kricki (https://github.com/Kricki)'
+__version__ = "0.1.2"
 
 
 class Model:
@@ -22,14 +22,14 @@ class Model:
         self.scores = [[0]*2 for _ in range(9)]  # stores the match scores
 
     def update_teams(self):
-        #self.team_array = tipper.defineTeams(self.home_team_advantage, self.mu)
+        # self.team_array = tipper.defineTeams(self.home_team_advantage, self.mu)
         self.liga.create_db_table()
         self.liga.read_db()
 
         for kk in range(18):
-            #self.team_array.append(self.liga.get_team_object_from_index(kk+1))
+            # self.team_array.append(self.liga.get_team_object_from_index(kk+1))
             self.team_array[kk] = self.liga.get_team_object_from_index(kk+1)
-            #self.liga.add_team(self.team_array[kk])
+            # self.liga.add_team(self.team_array[kk])
 
     def update_db(self):
         self.liga.update_db()
@@ -39,7 +39,6 @@ class Controller:
     def __init__(self, master=None):
         self._master = master
         self.model = Model()
-        self.score_calculator = tipper.ScoreCalculator()
 
         self.kicktipp_api = tipper.KicktippAPI("")  # Constructur will again be called in "login"
 
@@ -127,7 +126,7 @@ class Controller:
 
         team_settings_dialog.show(self._master)
 
-        if not team_settings_dialog.canceled:
+        if not team_settings_dialog.canceled:  # update teams and database
             for team, team_index in self.model.liga.team_dict.items():  # iterate over all team objects in liga
                 team.name = team_settings_dialog.team_names[team_index-1]
                 team.scored_goals = int(team_settings_dialog.scored_goals[team_index-1])
@@ -136,22 +135,23 @@ class Controller:
             self.model.update_db()
 
     def generate_score(self):
-        if(self.main_view.main_widgets.v_score_generator.get()=="xS"):
+        if self.main_view.main_widgets.v_score_generator.get() == "xS":
             for kk in range(9):
                 team_name1 = self.main_view.main_widgets.v_team_list[2*kk].get()
                 team_name2 = self.main_view.main_widgets.v_team_list[2*kk+1].get()
                 team1 = self.model.liga.get_team_object_from_team_name(team_name1, exact_match=False)
                 team2 = self.model.liga.get_team_object_from_team_name(team_name2, exact_match=False)
 
-                score1, score2 = self.score_calculator.expected_score(self.model.mu, self.model.home_team_advantage, team1, team2)
+                score1, score2 = tipper.ScoreCalculator.expected_score(self.model.mu, self.model.home_team_advantage,
+                                                                       team1, team2)
                 self.main_view.main_widgets.v_results_list[2*kk].set(score1)
                 self.main_view.main_widgets.v_results_list[2*kk+1].set(score2)
 
                 self.update_scores()
 
-        elif(self.main_view.main_widgets.v_score_generator.get()=="Random"):
+        elif self.main_view.main_widgets.v_score_generator.get() == "Random":
             for kk in range(9):
-                score1, score2 = self.score_calculator.random_score(self.model.mu)
+                score1, score2 = tipper.ScoreCalculator.random_score(self.model.mu)
                 self.main_view.main_widgets.v_results_list[2*kk].set(score1)
                 self.main_view.main_widgets.v_results_list[2*kk+1].set(score2)
 
@@ -160,7 +160,7 @@ class Controller:
     def show_info(self):
         """ Display the info screen
         """
-        tkmessagebox.showinfo("Info", "Kicktipper v"+str(VERSION))
+        tkmessagebox.showinfo("Info", "Kicktipper v"+__version__)
 
     def login(self):
         login_dialog = gui.LoginDialog(self._master)
@@ -170,17 +170,23 @@ class Controller:
 
         if not login_dialog.canceled:
             print("Logging in... ")
-            self.model.group = login_dialog.group
-            self.model.username = login_dialog.username
-            self.write_config()
-            self.kicktipp_api = tipper.KicktippAPI(login_dialog.group)
-            login_status = self.kicktipp_api.login(login_dialog.username, login_dialog.password)
+            try:
+                self.model.group = login_dialog.group
+                self.model.username = login_dialog.username
+                self.write_config()
+                self.kicktipp_api = tipper.KicktippAPI(login_dialog.group)
+                login_status = self.kicktipp_api.login(login_dialog.username, login_dialog.password)
+            except:
+                tkmessagebox.showinfo("Login failed", "Check your internet connection.")
+                raise
 
             if login_status == 0:
                 print("Login succesful")
                 self.set_statusbar("Logged in as " + self.model.username + " in " + self.model.group)
+                tkmessagebox.showinfo("Info", "Login succesful")
             else:
                 print("Login failed")
+                tkmessagebox.showinfo("Error", "Login failed")
 
     def logout(self):
         print("Logging out... ")
@@ -220,7 +226,7 @@ class Controller:
 if __name__ == '__main__':
     root = tk.Tk()
     root.title('Kicktipper')
-    root.option_add('*tearOff', False) # see: http://www.tkdocs.com/tutorial/menus.html (for Menubar)
+    root.option_add('*tearOff', False)  # see: http://www.tkdocs.com/tutorial/menus.html (for Menubar)
 
     app = Controller(root)
     root.mainloop()
