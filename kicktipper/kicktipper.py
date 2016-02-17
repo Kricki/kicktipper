@@ -8,7 +8,7 @@ import tipper
 import gui
 
 __author__ = 'Kricki (https://github.com/Kricki)'
-__version__ = "0.1.2"
+__version__ = "0.1.3"
 
 
 class Model:
@@ -208,6 +208,7 @@ class Controller:
 
     def submit_scores(self):
         print("Submit scores... ")
+        self.update_scores()  # read values from the GUI before submitting
         self.kicktipp_api.submit_scores(self.model.scores)
         print("Done.")
 

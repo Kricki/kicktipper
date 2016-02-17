@@ -45,6 +45,8 @@ docs/_build
 /env
 todo.txt
 /.idea
+kicktipper.spec
+
 
 /kicktipper/my_tests
 /kicktipper/build
@@ -53,6 +55,5 @@ todo.txt
 
 /kicktipper/config.ini
 /kicktipper/Bundesliga.sqlite
-/kicktipper/kicktipper.spec
 
 

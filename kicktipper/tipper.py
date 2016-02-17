@@ -459,15 +459,24 @@ class KicktippAPI:
         form = self.browser.get_forms()
         tipp_form = form[1]
 
+        # count number of matches that are not played yet
+        n_matches = 0
+        for element in tipp_form.keys():
+            if "heimTipp" in element:
+                n_matches += 1
+
+        # "match_number+9-n_matches": matches that are already played are ignored
+        # e.g. if you submit your scores on saturday, the score from the friday's match will be ignored.
         match_number = 0
         for element in tipp_form.keys():
             if "heimTipp" in element:
-                tipp_form[element].value = scores[match_number][0]
+                tipp_form[element].value = scores[match_number+9-n_matches][0]
             elif "gastTipp" in element:
-                tipp_form[element].value = scores[match_number][1]
+                tipp_form[element].value = scores[match_number+9-n_matches][1]
                 match_number += 1
 
         self.browser.submit_form(tipp_form)
+
 
 def defineTeams(home_team_advantage, mu):
     teamArray = []
