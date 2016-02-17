@@ -557,3 +557,4 @@ def defineTeams(home_team_advantage, mu):
         teamArray[k].compute_offense_strength_from_scored_goals(home_team_advantage, mu)
 
     return teamArray
+
