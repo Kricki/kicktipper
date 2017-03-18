@@ -5,6 +5,7 @@ from tkinter import ttk
 import tkadd
 
 __author__ = 'Kricki (https://github.com/Kricki)'
+__version__ = "0.1.3"
 
 
 class MainWidgets(ttk.Frame):

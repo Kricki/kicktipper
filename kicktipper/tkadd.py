@@ -3,7 +3,7 @@ import tkinter as tk
 from tkinter import ttk
 
 __author__ = 'Kricki (https://github.com/Kricki)'
-
+__version__ = "0.1"
 
 
 class Dialog(tk.Toplevel):

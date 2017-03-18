@@ -9,6 +9,7 @@ import tools
 
 
 __author__ = 'Kricki (https://github.com/Kricki)'
+__version__ = "0.1.4"
 
 
 class Team:
@@ -396,7 +397,7 @@ class KicktippAPI:
         self.browser.open(self._url_login)
 
         # Get the signup form
-        signup_form = self.browser.get_form(id='profil.login.form')
+        signup_form = self.browser.get_form(id='loginFormular')
 
         # Fill it out
         signup_form['kennung'].value = username
@@ -436,7 +437,8 @@ class KicktippAPI:
                 if element.string is not None:  # not another id tag (element is not a string)
                     if not re.match('^[0-9]{2}\.', element.string):  # not a date. RegExp: First two symbols are digits, followed by dot.
                         if not re.match('[0-9]:[0-9]', element.string):  # not a score (e.g. '2:1')
-                            teams.append(element.string)
+                            if not re.match('[0-9]\.[0-9]', element.string):  # not a betting odd (e.g. "1.85")
+                                teams.append(element.string)
 
             games = [[None]*2 for _ in range(9)]
 
@@ -457,7 +459,7 @@ class KicktippAPI:
         """
         self.browser.open(self.url_tippabgabe)
         form = self.browser.get_forms()
-        tipp_form = form[1]
+        tipp_form = form[0]
 
         # count number of matches that are not played yet
         n_matches = 0
@@ -557,4 +559,3 @@ def defineTeams(home_team_advantage, mu):
         teamArray[k].compute_offense_strength_from_scored_goals(home_team_advantage, mu)
 
     return teamArray
-
