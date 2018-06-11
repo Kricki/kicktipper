@@ -350,6 +350,7 @@ class KicktippAPI:
         self._url = "https://www.kicktipp.de/" + self._name + "/"
         self._url_login = self._url + "profil/login"
         self._url_logout = self._url + "profil/logout"
+        self._url_tippabgabe = self.url + "tippabgabe"
 
     @property
     def url(self):
@@ -407,7 +408,7 @@ class KicktippAPI:
         self._browser.submit_form(signup_form)
 
         # print(self.browser.state.response.history)
-        if self.browser.url == "https://www.kicktipp.de/"+self.name+"/startseite":
+        if self.browser.url == self.url:
             return 0
         else:
             return -1
