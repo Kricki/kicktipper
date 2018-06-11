@@ -451,6 +451,71 @@ class KicktippAPI:
         else:
             return None
 
+    def fetch_games_world_cup(self, matchday=None):
+        """Fetches the matchday from the Kicktipp website. Version for world cups.
+
+        The user must be logged in.
+
+        Parameters
+        ----------
+        matchday : int
+            Specifies the matchday to be fetched. If None (default) the upcoming matchday is fetched.
+
+        Returns
+        -------
+        list of teams, list of quoten, list of wettquoten
+
+        """
+
+        """ Fetches the matchday from the Kicktipp website.
+
+        The user must be logged in.
+
+        :return: list of teams, list of quoten, list of wettquoten
+        """
+        if matchday is None:
+            url = self.url_tippabgabe
+        else:
+            url = self.url_tippabgabe + '?&spieltagIndex=' + str(matchday)
+        self.browser.open(url)
+        if self.browser.url == url:  # redirection successful?
+            soup = BeautifulSoup(self.browser.response.content,
+                                 "html.parser")  # get BeautifulSoup object from RoboBrowser
+            data = soup.find_all('td', class_='nw')
+
+            teams = []
+            quoten = []
+            wettquoten = []
+
+            teams_temp = []
+            quoten_temp = []
+            wettquoten_temp = []
+            for element in data:
+                if element.string is not None:  # not another id tag (element is not a string)
+                    if re.match('^[0-9]{2}\.',
+                                element.string):  # a date ("kicktipp-time"). RegExp: First two symbols are digits, followed by dot.
+                        if teams_temp:
+                            teams.append(teams_temp)
+                            teams_temp = []
+                        if quoten_temp:
+                            quoten.append(quoten_temp)
+                            quoten_temp = []
+                        if wettquoten_temp:
+                            wettquoten.append(wettquoten_temp)
+                            wettquoten_temp = []
+                    elif re.match('[0-9]{2} - [0-9]{2} - [0-9]{2}', element.string):
+                        quoten_temp = re.findall(r'\d+', element.string)
+                        quoten_temp = [int(_) for _ in quoten_temp]
+                    elif element.attrs['class'][0] == 'kicktipp-wettquote':
+                        wettquoten_temp.append(float(element.string.replace(',', '.')))
+                    elif not re.match('[0-9]:[0-9]', element.string):  # not a score (e.g. '2:1')
+                        # it is a team name
+                        teams_temp.append(element.string)
+
+            return teams, quoten, wettquoten
+        else:
+            return None
+
     def submit_scores(self, scores):
         """ Uploads the matchday scores to the kicktipp website
 
