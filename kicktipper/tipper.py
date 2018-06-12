@@ -467,12 +467,6 @@ class KicktippAPI:
 
         """
 
-        """ Fetches the matchday from the Kicktipp website.
-
-        The user must be logged in.
-
-        :return: list of teams, list of quoten, list of wettquoten
-        """
         if matchday is None:
             url = self.url_tippabgabe
         else:
@@ -492,7 +486,7 @@ class KicktippAPI:
             wettquoten_temp = []
             for element in data:
                 if element.string is not None:  # not another id tag (element is not a string)
-                    if re.match('^[0-9]{2}\.',
+                    if re.match('^[0-9]{2}\.[0-9]{2}\.[0-9]{2}',
                                 element.string):  # a date ("kicktipp-time"). RegExp: First two symbols are digits, followed by dot.
                         if teams_temp:
                             teams.append(teams_temp)
@@ -511,6 +505,12 @@ class KicktippAPI:
                     elif not re.match('[0-9]:[0-9]', element.string):  # not a score (e.g. '2:1')
                         # it is a team name
                         teams_temp.append(element.string)
+            if teams_temp:
+                teams.append(teams_temp)
+            if quoten_temp:
+                quoten.append(quoten_temp)
+            if wettquoten_temp:
+                wettquoten.append(wettquoten_temp)
 
             return teams, quoten, wettquoten
         else:
