@@ -511,6 +511,12 @@ class KicktippAPI:
                     elif not re.match('[0-9]:[0-9]', element.string):  # not a score (e.g. '2:1')
                         # it is a team name
                         teams_temp.append(element.string)
+            if teams_temp:
+                teams.append(teams_temp)
+            if quoten_temp:
+                quoten.append(quoten_temp)
+            if wettquoten_temp:
+                wettquoten.append(wettquoten_temp)
 
             return teams, quoten, wettquoten
         else:
