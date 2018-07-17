@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
-import numpy
+import numpy as np
 from robobrowser import RoboBrowser
 from bs4 import BeautifulSoup
 import re  # RegExp
 import sqlite3
+import pandas as pd
 
 import tools
 
@@ -313,8 +314,8 @@ class ScoreCalculator:
         result_ok = False
 
         while not result_ok:
-            score1 = numpy.random.poisson(mu/2)
-            score2 = numpy.random.poisson(mu/2)
+            score1 = np.random.poisson(mu/2)
+            score2 = np.random.poisson(mu/2)
             if draw_allowed:
                 result_ok = True
             else:
@@ -337,6 +338,8 @@ class KicktippAPI:
         self._url_login = self._url + "profil/login"
         self._url_logout = self._url + "profil/logout"
         self._url_tippabgabe = self.url + "tippabgabe"
+
+        self._members = pd.DataFrame(columns=['name', 'id'])
 
         self._browser = RoboBrowser()
 
@@ -383,6 +386,10 @@ class KicktippAPI:
     @url_tippabgabe.setter
     def url_tippabgabe(self, value):
         self._url_tippabgabe = value
+
+    @property
+    def members(self):
+        return self._members
 
     @property
     def browser(self):
@@ -466,13 +473,6 @@ class KicktippAPI:
         list of teams, list of quoten, list of wettquoten
 
         """
-
-        """ Fetches the matchday from the Kicktipp website.
-
-        The user must be logged in.
-
-        :return: list of teams, list of quoten, list of wettquoten
-        """
         if matchday is None:
             url = self.url_tippabgabe
         else:
@@ -528,6 +528,92 @@ class KicktippAPI:
             return teams, quoten, wettquoten
         else:
             return None
+
+    def read_tipps(self, member, matchday):
+        """ Reads Tipps from a member for a specific matchday
+
+        Parameters
+        ----------
+        member : str or int
+            Name or ID of member (see self.members)
+        matchday : int
+            Matchday to be read
+
+        Returns
+        -------
+        pd.DataFrame
+            Dataframe containing the tipps
+        """
+        if type(member) is str:  # assume the member name is passed => convert to ID
+            member_id = self._members[self._members['name'] == member]['id'].item()
+        else:
+            member_id = member
+        url = self.url + 'tippuebersicht/tipper?spieltagIndex=' + str(matchday) + '&rankingTeilnehmerId=' \
+              + str(member_id)
+        self.browser.open(url)
+        soup = BeautifulSoup(self.browser.response.content, 'html.parser')
+        data = soup.find_all('td', {"class": 'nw'})
+
+        tipps = pd.DataFrame(columns=['team1', 'team2', 'tipp1', 'tipp2'])
+
+        team1 = []
+        team2 = []
+        tipp1 = []
+        tipp2 = []
+
+        team_names_read = 0
+        for el in data:
+            if el.string is not None:
+                if re.match('^[a-zA-ZäöüÄÖÜß_\-\s]+$',
+                            el.string):  # a team name (including Umlauts, hyphen and whitespace)
+                    if team_names_read == 2:
+                        tipp1.append(None)
+                        tipp2.append(None)
+                        team_names_read = 0
+                    if team_names_read == 0:
+                        team1.append(el.string)
+                        team_names_read = 1
+                    elif team_names_read == 1:
+                        team2.append(el.string)
+                        team_names_read = 2
+                elif re.match('[0-9]:[0-9]', el.string):  # a score
+                    tipp1.append(int(el.string.split(':')[0]))
+                    tipp2.append(int(el.string.split(':')[1]))
+                    team_names_read = 0
+
+        tipps['team1'] = team1
+        tipps['team2'] = team2
+        tipps['tipp1'] = tipp1
+        tipps['tipp2'] = tipp2
+
+        return tipps
+
+    def read_members(self):
+        """ Reads the members and corresponding IDs and stores it in the pd.DataFrame self.members
+
+        Returns
+        -------
+        pd.DataFrame
+            Dataframe containing the members names and IDs
+        """
+        url = self.url + 'gesamtuebersicht'
+        self.browser.open(url)
+        soup = BeautifulSoup(self.browser.response.content, 'html.parser')
+        data = soup.find_all('td', {"class": 'name'})
+
+        names = []
+        for el in data:
+            names.append(str(el.string))
+
+        data = soup.find_all('tr', {"class": 'teilnehmer'})  # "TeilnehmerID"
+        ids = []
+        for el in data:
+            ids.append(int(el.attrs['data-teilnehmer-id']))
+
+        self._members['name'] = names
+        self._members['id'] = ids
+
+        return self._members
 
     def submit_scores(self, scores):
         """ Uploads the matchday scores to the kicktipp website
