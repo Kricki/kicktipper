@@ -580,6 +580,9 @@ class KicktippAPI:
                     tipp1.append(int(el.string.split(':')[0]))
                     tipp2.append(int(el.string.split(':')[1]))
                     team_names_read = 0
+        if team_names_read == 2:
+            tipp1.append(None)
+            tipp2.append(None)
 
         tipps['team1'] = team1
         tipps['team2'] = team2
