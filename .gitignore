@@ -57,3 +57,9 @@ kicktipper.spec
 /kicktipper/Bundesliga.sqlite
 
 
+
+kicktipper/dev\.ipynb
+
+kicktipper/\.ipynb_checkpoints/
+
+kicktipper/\.idea/
