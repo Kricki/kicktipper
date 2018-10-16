@@ -578,12 +578,13 @@ class KicktippAPI:
             soup = self.browser.get_current_page()
             data = soup.find_all('td', {"class": 'nw'})
 
-            tipps = pd.DataFrame(columns=['team1', 'team2', 'tipp1', 'tipp2'])
+            tipps = pd.DataFrame(columns=['team1', 'team2', 'tipp1', 'tipp2', 'tipp_string'])
 
             team1 = []
             team2 = []
             tipp1 = []
             tipp2 = []
+            tipp_string = []
 
             team_names_read = 0
             for el in data:
@@ -593,6 +594,7 @@ class KicktippAPI:
                         if team_names_read == 2:
                             tipp1.append(None)
                             tipp2.append(None)
+                            tipp_string.append(None)
                             team_names_read = 0
                         if team_names_read == 0:
                             team1.append(el.string)
@@ -603,15 +605,18 @@ class KicktippAPI:
                     elif re.match('[0-9]:[0-9]', el.string):  # a score
                         tipp1.append(int(el.string.split(':')[0]))
                         tipp2.append(int(el.string.split(':')[1]))
+                        tipp_string.append(str(el.string))
                         team_names_read = 0
             if team_names_read == 2:
                 tipp1.append(None)
                 tipp2.append(None)
+                tipp_string.append(None)
 
             tipps['team1'] = team1
             tipps['team2'] = team2
             tipps['tipp1'] = tipp1
             tipps['tipp2'] = tipp2
+            tipps['tipp_string'] = tipp_string
 
             return tipps
 
