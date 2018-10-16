@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 import numpy as np
-from robobrowser import RoboBrowser
-from bs4 import BeautifulSoup
+import mechanicalsoup
 import re  # RegExp
 import sqlite3
 import pandas as pd
@@ -328,7 +327,7 @@ class ScoreCalculator:
 class KicktippAPI:
     """ API for communication with kicktipp.de website
 
-    Uses robobrowser library
+    Uses mechanicalsoup library
 
     """
 
@@ -341,7 +340,7 @@ class KicktippAPI:
 
         self._members = pd.DataFrame(columns=['name', 'id'])
 
-        self._browser = RoboBrowser()
+        self._browser = mechanicalsoup.StatefulBrowser(soup_config={'features': 'html5lib'})
 
     @property
     def name(self):
@@ -395,37 +394,65 @@ class KicktippAPI:
     def browser(self):
         return self._browser
 
+    def _browser_open(self, url):
+        """ Open URL. The objects self.browser object is updated.
+
+        Parameters
+        ----------
+        url : str
+            URL of website
+
+        Returns
+        -------
+        bool
+            True if opening was successful, False otherwise.
+
+        """
+        self.browser.open(url)
+        if self.browser.get_url() == url:
+            return True
+        else:
+            return False
+
     def login(self, username, password):
         """ Logs into the kicktipp website in the current group.
 
-        :param string username: Username
-        :param string password: Password
-        :return: int 0 if login succesful, -1 if not.
+        Parameters
+        ----------
+        username : str
+        password : str
+
+        Returns
+        -------
+        bool
+            True if login was successful, False otherwise.
+
         """
         self.browser.open(self._url_login)
 
-        # Get the signup form
-        signup_form = self.browser.get_form(id='loginFormular')
+        # Select the signup form
+        self.browser.select_form('form[action="/' + self._name + '/profil/loginaction"]')
 
-        # Fill it out
-        signup_form['kennung'].value = username
-        signup_form['passwort'].value = password
+        # Fill it out and submit
+        self.browser['kennung'] = username
+        self.browser['passwort'] = password
+        self.browser.submit_selected()
 
-        # Submit the form
-        self._browser.submit_form(signup_form)
-
-        # print(self.browser.state.response.history)
-        if self.browser.url == self.url:
-            return 0
+        if self.browser.get_url() == self.url:  # redirection to group page successful?
+            return True
         else:
-            return -1
+            return False
 
     def logout(self):
-        self.browser.open(self.url_logout)
-        if self.browser.url == self.url_logout:
-            print("Logout successful")
-        else:
-            print("Logout failed")
+        """ Logs out from current account.
+
+        Returns
+        -------
+        bool
+            True if logout was successful, False otherwise
+
+        """
+        return self._browser_open(self.url_logout)
 
     def fetch_games(self):
         """ Fetches the upcoming matchday from the Kicktipp website.
@@ -435,10 +462,9 @@ class KicktippAPI:
         :return: 9x2 matrix (9 rows, 2 columns), each row containing the name of the teams for one match
                 None is returned, if fetching was not successful.
         """
-        self.browser.open(self.url_tippabgabe)
-        if self.browser.url == self.url_tippabgabe: # redirection successful?
-            soup = BeautifulSoup(self.browser.response.content, "html.parser") # get BeautifulSoup object from RoboBrowser
-            data = soup.find_all('td', class_='nw')
+        if self._browser_open(self.url_tippabgabe):
+            soup = self.browser.get_current_page() # get BeautifulSoup object from mechanicalsoup browser
+            data = soup.find_all('td', {'class': 'nw'})
 
             teams = []
             for element in data:
@@ -477,10 +503,8 @@ class KicktippAPI:
             url = self.url_tippabgabe
         else:
             url = self.url_tippabgabe + '?&spieltagIndex=' + str(matchday)
-        self.browser.open(url)
-        if self.browser.url == url:  # redirection successful?
-            soup = BeautifulSoup(self.browser.response.content,
-                                 "html.parser")  # get BeautifulSoup object from RoboBrowser
+        if self._browser_open(url):
+            soup = self.browser.get_current_page()
             data = soup.find_all('td', {'class': 'nw'})
 
             teams = []
@@ -550,46 +574,51 @@ class KicktippAPI:
             member_id = member
         url = self.url + 'tippuebersicht/tipper?spieltagIndex=' + str(matchday) + '&rankingTeilnehmerId=' \
               + str(member_id)
-        self.browser.open(url)
-        soup = BeautifulSoup(self.browser.response.content, 'html.parser')
-        data = soup.find_all('td', {"class": 'nw'})
+        if self._browser_open(url):
+            soup = self.browser.get_current_page()
+            data = soup.find_all('td', {"class": 'nw'})
 
-        tipps = pd.DataFrame(columns=['team1', 'team2', 'tipp1', 'tipp2'])
+            tipps = pd.DataFrame(columns=['team1', 'team2', 'tipp1', 'tipp2', 'tipp_string'])
 
-        team1 = []
-        team2 = []
-        tipp1 = []
-        tipp2 = []
+            team1 = []
+            team2 = []
+            tipp1 = []
+            tipp2 = []
+            tipp_string = []
 
-        team_names_read = 0
-        for el in data:
-            if el.string is not None:
-                if re.match('^[a-zA-ZäöüÄÖÜß_\-\s]+$',
-                            el.string):  # a team name (including Umlauts, hyphen and whitespace)
-                    if team_names_read == 2:
-                        tipp1.append(None)
-                        tipp2.append(None)
+            team_names_read = 0
+            for el in data:
+                if el.string is not None:
+                    if re.match('^[a-zA-ZäöüÄÖÜß_\-\s]+$',
+                                el.string):  # a team name (including Umlauts, hyphen and whitespace)
+                        if team_names_read == 2:
+                            tipp1.append(None)
+                            tipp2.append(None)
+                            tipp_string.append(None)
+                            team_names_read = 0
+                        if team_names_read == 0:
+                            team1.append(el.string)
+                            team_names_read = 1
+                        elif team_names_read == 1:
+                            team2.append(el.string)
+                            team_names_read = 2
+                    elif re.match('[0-9]:[0-9]', el.string):  # a score
+                        tipp1.append(int(el.string.split(':')[0]))
+                        tipp2.append(int(el.string.split(':')[1]))
+                        tipp_string.append(str(el.string))
                         team_names_read = 0
-                    if team_names_read == 0:
-                        team1.append(el.string)
-                        team_names_read = 1
-                    elif team_names_read == 1:
-                        team2.append(el.string)
-                        team_names_read = 2
-                elif re.match('[0-9]:[0-9]', el.string):  # a score
-                    tipp1.append(int(el.string.split(':')[0]))
-                    tipp2.append(int(el.string.split(':')[1]))
-                    team_names_read = 0
-        if team_names_read == 2:
-            tipp1.append(None)
-            tipp2.append(None)
+            if team_names_read == 2:
+                tipp1.append(None)
+                tipp2.append(None)
+                tipp_string.append(None)
 
-        tipps['team1'] = team1
-        tipps['team2'] = team2
-        tipps['tipp1'] = tipp1
-        tipps['tipp2'] = tipp2
+            tipps['team1'] = team1
+            tipps['team2'] = team2
+            tipps['tipp1'] = tipp1
+            tipps['tipp2'] = tipp2
+            tipps['tipp_string'] = tipp_string
 
-        return tipps
+            return tipps
 
     def read_members(self):
         """ Reads the members and corresponding IDs and stores it in the pd.DataFrame self.members
@@ -600,23 +629,23 @@ class KicktippAPI:
             Dataframe containing the members names and IDs
         """
         url = self.url + 'gesamtuebersicht'
-        self.browser.open(url)
-        soup = BeautifulSoup(self.browser.response.content, 'html.parser')
-        data = soup.find_all('td', {"class": 'name'})
+        if self._browser_open(url):
+            soup = self.browser.get_current_page()
+            data = soup.find_all('td', {"class": 'name'})
 
-        names = []
-        for el in data:
-            names.append(str(el.string))
+            names = []
+            for el in data:
+                names.append(str(el.string))
 
-        data = soup.find_all('tr', {"class": 'teilnehmer'})  # "TeilnehmerID"
-        ids = []
-        for el in data:
-            ids.append(int(el.attrs['data-teilnehmer-id']))
+            data = soup.find_all('tr', {"class": 'teilnehmer'})  # "TeilnehmerID"
+            ids = []
+            for el in data:
+                ids.append(int(el.attrs['data-teilnehmer-id']))
 
-        self._members['name'] = names
-        self._members['id'] = ids
+            self._members['name'] = names
+            self._members['id'] = ids
 
-        return self._members
+            return self._members
 
     def submit_scores(self, scores):
         """ Uploads the matchday scores to the kicktipp website
@@ -625,27 +654,27 @@ class KicktippAPI:
 
         :param scores: 9x2 matrix contatining the scores (see model)
         """
-        self.browser.open(self.url_tippabgabe)
-        form = self.browser.get_forms()
-        tipp_form = form[0]
+        # TODO: Test new mechanicalsoup implementation
+        if self._browser_open(self.url_tippabgabe):
+            tipp_form = self.browser.select_form(nr=0)
 
-        # count number of matches that are not played yet
-        n_matches = 0
-        for element in tipp_form.keys():
-            if "heimTipp" in element:
-                n_matches += 1
+            # count number of matches that are not played yet
+            n_matches = 0
+            for element in tipp_form.keys():
+                if "heimTipp" in element:
+                    n_matches += 1
 
-        # "match_number+9-n_matches": matches that are already played are ignored
-        # e.g. if you submit your scores on saturday, the score from the friday's match will be ignored.
-        match_number = 0
-        for element in tipp_form.keys():
-            if "heimTipp" in element:
-                tipp_form[element].value = scores[match_number+9-n_matches][0]
-            elif "gastTipp" in element:
-                tipp_form[element].value = scores[match_number+9-n_matches][1]
-                match_number += 1
+            # "match_number+9-n_matches": matches that are already played are ignored
+            # e.g. if you submit your scores on saturday, the score from the friday's match will be ignored.
+            match_number = 0
+            for element in tipp_form.keys():
+                if "heimTipp" in element:
+                    tipp_form[element] = scores[match_number+9-n_matches][0]
+                elif "gastTipp" in element:
+                    tipp_form[element] = scores[match_number+9-n_matches][1]
+                    match_number += 1
 
-        self.browser.submit_form(tipp_form)
+            self.browser.submit_selected()
 
 
 def defineTeams(home_team_advantage, mu):
