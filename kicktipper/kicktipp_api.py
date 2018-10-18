@@ -6,23 +6,36 @@ import pandas as pd
 class KicktippAPI:
     """ API for communication with kicktipp.de website
 
-    Uses mechanicalsoup library
+    Attributes
+    ----------
+    name : str
+        Name of the kicktipp group
 
+    members : pandas.DataFrame
+        DataFrame containing registered member of the kicktipp group
     """
 
     def __init__(self, name):
-        self._name = name
+        """
+
+        Parameters
+        ----------
+        name : str
+            Name of the kicktipp group
+        """
+        self._name = self.name = name
+        self.members = pd.DataFrame(columns=['name', 'id'])
+
         self._url = "https://www.kicktipp.de/" + self._name + "/"
         self._url_login = self._url + "profil/login"
         self._url_logout = self._url + "profil/logout"
-        self._url_tippabgabe = self.url + "tippabgabe"
-
-        self._members = pd.DataFrame(columns=['name', 'id'])
+        self._url_tippabgabe = self._url + "tippabgabe"
 
         self._browser = mechanicalsoup.StatefulBrowser(soup_config={'features': 'html5lib'})
 
     @property
     def name(self):
+        """str: Name of the kicktipp group"""
         return self._name
 
     @name.setter
@@ -31,47 +44,7 @@ class KicktippAPI:
         self._url = "https://www.kicktipp.de/" + self._name + "/"
         self._url_login = self._url + "profil/login"
         self._url_logout = self._url + "profil/logout"
-        self._url_tippabgabe = self.url + "tippabgabe"
-
-    @property
-    def url(self):
-        return self._url
-
-    @url.setter
-    def url(self, value):
-        self._url = value
-
-    @property
-    def url_login(self):
-        return self._url_login
-
-    @url_login.setter
-    def url_login(self, value):
-        self._url_login = value
-
-    @property
-    def url_logout(self):
-        return self._url_logout
-
-    @url_logout.setter
-    def url_logout(self, value):
-        self._url_logout = value
-
-    @property
-    def url_tippabgabe(self):
-        return self._url_tippabgabe
-
-    @url_tippabgabe.setter
-    def url_tippabgabe(self, value):
-        self._url_tippabgabe = value
-
-    @property
-    def members(self):
-        return self._members
-
-    @property
-    def browser(self):
-        return self._browser
+        self._url_tippabgabe = self._url + "tippabgabe"
 
     def _browser_open(self, url):
         """ Open URL. The objects self.browser object is updated.
@@ -87,8 +60,8 @@ class KicktippAPI:
             True if opening was successful, False otherwise.
 
         """
-        self.browser.open(url)
-        if self.browser.get_url() == url:
+        self._browser.open(url)
+        if self._browser.get_url() == url:
             return True
         else:
             return False
@@ -107,17 +80,17 @@ class KicktippAPI:
             True if login was successful, False otherwise.
 
         """
-        self.browser.open(self._url_login)
+        self._browser.open(self._url_login)
 
         # Select the signup form
-        self.browser.select_form('form[action="/' + self._name + '/profil/loginaction"]')
+        self._browser.select_form('form[action="/' + self._name + '/profil/loginaction"]')
 
         # Fill it out and submit
-        self.browser['kennung'] = username
-        self.browser['passwort'] = password
-        self.browser.submit_selected()
+        self._browser['kennung'] = username
+        self._browser['passwort'] = password
+        self._browser.submit_selected()
 
-        if self.browser.get_url() == self.url:  # redirection to group page successful?
+        if self._browser.get_url() == self._url:  # redirection to group page successful?
             return True
         else:
             return False
@@ -131,7 +104,7 @@ class KicktippAPI:
             True if logout was successful, False otherwise
 
         """
-        return self._browser_open(self.url_logout)
+        return self._browser_open(self._url_logout)
 
     def fetch_games_old(self):
         """ Fetches the upcoming matchday from the Kicktipp website.
@@ -141,8 +114,8 @@ class KicktippAPI:
         :return: 9x2 matrix (9 rows, 2 columns), each row containing the name of the teams for one match
                 None is returned, if fetching was not successful.
         """
-        if self._browser_open(self.url_tippabgabe):
-            soup = self.browser.get_current_page() # get BeautifulSoup object from mechanicalsoup browser
+        if self._browser_open(self._url_tippabgabe):
+            soup = self._browser.get_current_page() # get BeautifulSoup object from mechanicalsoup browser
             data = soup.find_all('td', {'class': 'nw'})
 
             teams = []
@@ -166,11 +139,11 @@ class KicktippAPI:
 
     def read_games(self, matchday=None):
         if matchday is None:
-            url = self.url_tippabgabe
+            url = self._url_tippabgabe
         else:
-            url = self.url_tippabgabe + '?&spieltagIndex=' + str(matchday)
+            url = self._url_tippabgabe + '?&spieltagIndex=' + str(matchday)
         if self._browser_open(url):
-            soup = self.browser.get_current_page()
+            soup = self._browser.get_current_page()
             data = soup.find_all('td', {'class': 'nw'})
 
             teams = []
@@ -261,11 +234,11 @@ class KicktippAPI:
 
         """
         if matchday is None:
-            url = self.url_tippabgabe
+            url = self._url_tippabgabe
         else:
-            url = self.url_tippabgabe + '?&spieltagIndex=' + str(matchday)
+            url = self._url_tippabgabe + '?&spieltagIndex=' + str(matchday)
         if self._browser_open(url):
-            soup = self.browser.get_current_page()
+            soup = self._browser.get_current_page()
             data = soup.find_all('td', {'class': 'nw'})
 
             teams = []
@@ -330,13 +303,13 @@ class KicktippAPI:
             Dataframe containing the tipps
         """
         if type(member) is str:  # assume the member name is passed => convert to ID
-            member_id = self._members[self._members['name'] == member]['id'].item()
+            member_id = self.members[self.members['name'] == member]['id'].item()
         else:
             member_id = member
-        url = self.url + 'tippuebersicht/tipper?spieltagIndex=' + str(matchday) + '&rankingTeilnehmerId=' \
+        url = self._url + 'tippuebersicht/tipper?spieltagIndex=' + str(matchday) + '&rankingTeilnehmerId=' \
               + str(member_id)
         if self._browser_open(url):
-            soup = self.browser.get_current_page()
+            soup = self._browser.get_current_page()
             data = soup.find_all('td', {"class": 'nw'})
 
             tipps = pd.DataFrame(columns=['team1', 'team2', 'tipp1', 'tipp2', 'tipp_string'])
@@ -389,9 +362,9 @@ class KicktippAPI:
         pd.DataFrame
             Dataframe containing the members names and IDs
         """
-        url = self.url + 'gesamtuebersicht'
+        url = self._url + 'gesamtuebersicht'
         if self._browser_open(url):
-            soup = self.browser.get_current_page()
+            soup = self._browser.get_current_page()
             data = soup.find_all('td', {"class": 'name'})
 
             names = []
@@ -403,10 +376,10 @@ class KicktippAPI:
             for el in data:
                 ids.append(int(el.attrs['data-teilnehmer-id']))
 
-            self._members['name'] = names
-            self._members['id'] = ids
+            self.members['name'] = names
+            self.members['id'] = ids
 
-            return self._members
+            return self.members
 
     def submit_scores(self, scores):
         """ Uploads the matchday scores to the kicktipp website
@@ -416,8 +389,8 @@ class KicktippAPI:
         :param scores: 9x2 matrix contatining the scores (see model)
         """
         # TODO: Test new mechanicalsoup implementation
-        if self._browser_open(self.url_tippabgabe):
-            tipp_form = self.browser.select_form(nr=0)
+        if self._browser_open(self._url_tippabgabe):
+            tipp_form = self._browser.select_form(nr=0)
 
             # count number of matches that are not played yet
             n_matches = 0
@@ -435,4 +408,4 @@ class KicktippAPI:
                     tipp_form[element] = scores[match_number+9-n_matches][1]
                     match_number += 1
 
-            self.browser.submit_selected()
+            self._browser.submit_selected()
