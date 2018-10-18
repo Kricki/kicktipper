@@ -47,12 +47,14 @@ class KicktippAPI:
         self._url_tippabgabe = self._url + "tippabgabe"
 
     def _browser_open(self, url):
-        """ Open URL. The objects self.browser object is updated.
+        """ Open URL.
+
+        The object self.browser is updated.
 
         Parameters
         ----------
         url : str
-            URL of website
+            URL of target website
 
         Returns
         -------
@@ -114,6 +116,7 @@ class KicktippAPI:
         :return: 9x2 matrix (9 rows, 2 columns), each row containing the name of the teams for one match
                 None is returned, if fetching was not successful.
         """
+        #TODO: Obselete, can be deleted. (replaced by read_games)
         if self._browser_open(self._url_tippabgabe):
             soup = self._browser.get_current_page() # get BeautifulSoup object from mechanicalsoup browser
             data = soup.find_all('td', {'class': 'nw'})
@@ -138,6 +141,19 @@ class KicktippAPI:
 
 
     def read_games(self, matchday=None):
+        """ Reads data of a matchday from the kicktipp website
+
+        Parameters
+        ----------
+        matchday : int, optional
+            Number of matchday to be read. If None (default), the upcoming matchday is read.
+
+        Returns
+        -------
+        pandas.DataFrame
+            Dataframe containing the games, points and odds
+
+        """
         if matchday is None:
             url = self._url_tippabgabe
         else:
@@ -233,6 +249,7 @@ class KicktippAPI:
         list of teams, list of quoten, list of wettquoten
 
         """
+        #TODO: Obsolete (replaced by read_games).
         if matchday is None:
             url = self._url_tippabgabe
         else:
@@ -287,8 +304,8 @@ class KicktippAPI:
         else:
             return None
 
-    def read_tipps(self, member, matchday):
-        """ Reads Tipps from a member for a specific matchday
+    def read_predictions(self, member, matchday):
+        """ Reads predictions from a member for a specific matchday
 
         Parameters
         ----------
@@ -299,8 +316,8 @@ class KicktippAPI:
 
         Returns
         -------
-        pd.DataFrame
-            Dataframe containing the tipps
+        pandas.DataFrame
+            Dataframe containing the predictions
         """
         if type(member) is str:  # assume the member name is passed => convert to ID
             member_id = self.members[self.members['name'] == member]['id'].item()
@@ -355,11 +372,11 @@ class KicktippAPI:
             return tipps
 
     def read_members(self):
-        """ Reads the members and corresponding IDs and stores it in the pd.DataFrame self.members
+        """ Reads the members and corresponding IDs and stores it in the pandas.DataFrame self.members
 
         Returns
         -------
-        pd.DataFrame
+        pandas.DataFrame
             Dataframe containing the members names and IDs
         """
         url = self._url + 'gesamtuebersicht'
@@ -381,12 +398,16 @@ class KicktippAPI:
 
             return self.members
 
-    def submit_scores(self, scores):
-        """ Uploads the matchday scores to the kicktipp website
+    def submit_predictions(self, scores):
+        """ Uploads the matchday predictions to the kicktipp website
 
         The user must be logged in.
 
-        :param scores: 9x2 matrix contatining the scores (see model)
+        Parameters
+        ----------
+        scores : 2-d array with 2 columns
+            Containing the predicted scores
+
         """
         # TODO: Test new mechanicalsoup implementation
         if self._browser_open(self._url_tippabgabe):
