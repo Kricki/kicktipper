@@ -12,7 +12,7 @@ class Team:
     no_of_teams = 0
 
     ''' Constructor'''
-    def __init__(self, name):
+    def __init__(self, name=''):
         """ Constructor for Team object
 
         :param string name: Team's name
@@ -77,6 +77,7 @@ class Team:
 class Liga:
     """ Liga is a container for Team objects
     """
+    # TODO: Change to pandas Dataframe
 
     no_of_teams = 0
 
@@ -263,22 +264,38 @@ class Liga:
 
 
 class ScoreCalculator:
-    """ Functions to generate match scores.
+    """ Methods to generate match scores.
 
+    Attributes
+    ----------
+    mu : float
+        Expectation value for the total number of scored goals for the match
+    home_team_advantage : float
+        Factor to account for the advantage of the home team (extra goals scored by the home team)
+    team1 : Team
+        Home team
+    team2 : Team
+        Away team
     """
 
-    @staticmethod
-    def expected_score(mu, home_team_advantage, team1, team2):
-        """ Calculates "expected score" for the match between team1 and team2
+    def __init__(self):
+        self.mu = 2.5
+        self.home_team_advantage = 0
+        self.team1 = Team()
+        self.team2 = Team()
 
-        :param double mu: expectation value for the number of scored goals for the match
-        :param double home_team_advantage: Factor to account for the advantage of the home team
-        :param Team team1: Home team
-        :param Team team2: Away team
-        :return: int score for team 1 and score for team2
-        """
-        score1 = mu/2*team1.offense_strength - team2.defense_strength + home_team_advantage
-        score2 = mu/2*team2.offense_strength - team1.defense_strength
+    def expected_score(self):
+        """ Calculates "expected score" for a match from individual team strengths.
+
+        The calculation takes into account the teams offense strength, defense strength and the home team advantage.
+
+        Returns
+        -------
+        int, int
+            Expected score of team1 and team2
+        """ 
+        score1 = self.mu/2*self.team1.offense_strength - self.team2.defense_strength + self.home_team_advantage
+        score2 = self.mu/2*self.team2.offense_strength - self.team1.defense_strength
 
         d = score1-score2
 
@@ -293,22 +310,25 @@ class ScoreCalculator:
 
         return int(score1), int(score2)
 
-    @staticmethod
-    def random_score(mu, draw_allowed=True):
-        """ Generates random score, where the individual team score is drawn from a Poissonian distribution
-        :param double mu: the expectation value for the number of scored goals for the match. I.e. mu/2 is the
-            expectation value for the number of goals scored per team.
-        :param bool draw_allowed: A draw is a legal result. Default: True
+    def random_score(self, draw_allowed=True):
+        """ Generates random score, where the individual team score is drawn from a Poissonian distribution.
 
-        :return: int score for team 1 and score for team2
+        Parameters
+        ----------
+        draw_allowed : bool, optional
+            Indicates if a draw is a legal result. Default: True
 
+        Returns
+        -------
+        int, int
+            Expected score of team1 and team2
         """
 
         result_ok = False
-
+        score1, score2 = 0, 0
         while not result_ok:
-            score1 = np.random.poisson(mu/2)
-            score2 = np.random.poisson(mu/2)
+            score1 = np.random.poisson(self.mu/2)
+            score2 = np.random.poisson(self.mu/2)
             if draw_allowed:
                 result_ok = True
             else:
@@ -317,6 +337,39 @@ class ScoreCalculator:
 
         return score1, score2
 
+    @staticmethod
+    def probability_from_odd(rawodd, overround):
+        """ Compute outcome probability from bookmakers odds
+
+
+
+        See: Palomino et al. "Information salience, investor sentiment, and stock returns:
+         The case of British soccer betting." Journal of Corporate Finance 15.3 (2009): 368-387.
+
+        Parameters
+        ----------
+        rawodd : float
+            The "raw" quoted bookmakers odd for the outcome of a specific event (e.g. win of team 1)
+
+        overround : float
+            Overround
+            The raw quoted bookmakers odds are no “honest” odds but are the payout amounts for successful bets which
+            has two important implications: (1) They still contain the stake, i.e., the payment for placing the bet
+            (2) More importantly, the bookmakers odds contain a profit margin, the so-called “overround”, which
+            means that the “true” underlying odds are actually larger.
+
+            The overround must be choosen such that the sum of all probabilities for associated events sums to 1.
+            E.g. win, draw, loss are three associataed events which probabilites must sum to 1.
+
+        Returns
+        -------
+        float
+            Probability (between 0 and 1) of the events outcome
+
+        """
+        # delta = 1.1 for bwin
+        odd = (rawodd-1)*overround
+        return 1-odd/(1+odd)
 
 
 
