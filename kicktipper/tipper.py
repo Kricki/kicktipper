@@ -7,21 +7,35 @@ from . import tools
 
 
 class Team:
-    """    Represents a Team
+    """ Representation of a team
+
+    Attributes
+    ----------
+    name : str
+        Team's name
+    goals_per_season : int
+        Total number of goals the team is exptected to score in a complete season.
+        This attibute can be used to calculate the team's offense strength
+        (see compute_offense_strength_from_scored_goals).
+    offense_strength : float
+        Number indicating the team's offense strength
+    defense_strength : float
+        Number indicating the team's defense strength
     """
+
     no_of_teams = 0
 
     ''' Constructor'''
     def __init__(self, name=''):
-        """ Constructor for Team object
-
-        :param string name: Team's name
-        :return: Team object
-
         """
 
+        Parameters
+        ----------
+        name : str
+            Team's name
+        """
         self._name = name
-        self._scored_goals = 0
+        self._goals_per_season = 0
         self._offense_strength = 0
         self._defense_strength = 0
 
@@ -38,12 +52,12 @@ class Team:
         self._name = new_name
 
     @property
-    def scored_goals(self):
-        return self._scored_goals
+    def goals_per_season(self):
+        return self._goals_per_season
 
-    @scored_goals.setter
-    def scored_goals(self, value):
-        self._scored_goals = value
+    @goals_per_season.setter
+    def goals_per_season(self, value):
+        self._goals_per_season = value
 
     @property
     def offense_strength(self):
@@ -66,16 +80,14 @@ class Team:
         return self._index
 
     def __del__(self):
-        """ Desctructor of Team object
-        """
         Team.no_of_teams -= 1
 
     def compute_offense_strength_from_scored_goals(self, home_team_advantage, mu):
-        self.offense_strength = (self.scored_goals - 17*home_team_advantage)/(mu*17)
+        self._offense_strength = (self._goals_per_season - 17*home_team_advantage)/(mu*17)
 
 
-class Liga:
-    """ Liga is a container for Team objects
+class League:
+    """ League is a container for Team objects
     """
     # TODO: Change to pandas Dataframe
 

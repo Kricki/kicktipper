@@ -10,7 +10,6 @@ class KicktippAPI:
     ----------
     name : str
         Name of the kicktipp group
-
     members : pandas.DataFrame
         DataFrame containing registered member of the kicktipp group
     """
