@@ -58,8 +58,8 @@ kicktipper.spec
 
 
 
-kicktipper/dev\.ipynb
-
+kicktipper/dev
+dev/
 kicktipper/\.ipynb_checkpoints/
 
 kicktipper/\.idea/

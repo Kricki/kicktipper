@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import numpy as np
+import pandas as pd
 
 import sqlite3
 
@@ -39,7 +40,7 @@ class Team:
         self._offense_strength = 0
         self._defense_strength = 0
 
-        Team.no_of_teams += 1
+        Team.no_of_teams += 1  # ToDo: obosolete? Ueberhaupt sinnvoll, vernuenftige Datenkapselung?
 
         self._index = Team.no_of_teams
 
@@ -89,7 +90,6 @@ class Team:
 class League:
     """ League is a container for Team objects
     """
-    # TODO: Change to pandas Dataframe
 
     no_of_teams = 0
 
@@ -379,7 +379,7 @@ class ScoreCalculator:
             Probability (between 0 and 1) of the events outcome
 
         """
-        # delta = 1.1 for bwin
+        # overround = 1.1 for bwin
         odd = (rawodd-1)*overround
         return 1-odd/(1+odd)
 

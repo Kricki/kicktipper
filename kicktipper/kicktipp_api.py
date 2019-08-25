@@ -11,7 +11,7 @@ class KicktippAPI:
     name : str
         Name of the kicktipp group
     members : pandas.DataFrame
-        DataFrame containing registered member of the kicktipp group
+        DataFrame containing registered members of the kicktipp group
     """
 
     def __init__(self, name):
@@ -81,6 +81,7 @@ class KicktippAPI:
             True if login was successful, False otherwise.
 
         """
+        ## TODO: implement timeout
         self._browser.open(self._url_login)
 
         # Select the signup form
@@ -106,38 +107,6 @@ class KicktippAPI:
 
         """
         return self._browser_open(self._url_logout)
-
-    def fetch_games_old(self):
-        """ Fetches the upcoming matchday from the Kicktipp website.
-
-        The user must be logged in.
-
-        :return: 9x2 matrix (9 rows, 2 columns), each row containing the name of the teams for one match
-                None is returned, if fetching was not successful.
-        """
-        #TODO: Obselete, can be deleted. (replaced by read_games)
-        if self._browser_open(self._url_tippabgabe):
-            soup = self._browser.get_current_page() # get BeautifulSoup object from mechanicalsoup browser
-            data = soup.find_all('td', {'class': 'nw'})
-
-            teams = []
-            for element in data:
-                if element.string is not None:  # not another id tag (element is not a string)
-                    if not re.match('^[0-9]{2}\.', element.string):  # not a date. RegExp: First two symbols are digits, followed by dot.
-                        if not re.match('[0-9]:[0-9]', element.string):  # not a score (e.g. '2:1')
-                            if not re.match('[0-9]\.[0-9]', element.string):  # not a betting odd (e.g. "1.85")
-                                teams.append(element.string)
-
-            games = [[None]*2 for _ in range(9)]
-
-            for kk in range(9):
-                games[kk][0] = teams[2*kk]
-                games[kk][1] = teams[2*kk+1]
-
-            return games
-        else:
-            return None
-
 
     def read_games(self, matchday=None):
         """ Reads data of a matchday from the kicktipp website
@@ -232,77 +201,6 @@ class KicktippAPI:
         else:
             return None
 
-
-    def fetch_games_world_cup(self, matchday=None):
-        """Fetches the matchday from the Kicktipp website. Version for world cups.
-
-        The user must be logged in.
-
-        Parameters
-        ----------
-        matchday : int
-            Specifies the matchday to be fetched. If None (default) the upcoming matchday is fetched.
-
-        Returns
-        -------
-        list of teams, list of quoten, list of wettquoten
-
-        """
-        #TODO: Obsolete (replaced by read_games).
-        if matchday is None:
-            url = self._url_tippabgabe
-        else:
-            url = self._url_tippabgabe + '?&spieltagIndex=' + str(matchday)
-        if self._browser_open(url):
-            soup = self._browser.get_current_page()
-            data = soup.find_all('td', {'class': 'nw'})
-
-            teams = []
-            quoten = []
-            wettquoten = []
-
-            teams_temp = []
-            quoten_temp = []
-            wettquoten_temp = []
-            for element in data:
-                class_name = None
-                if len(element.attrs['class']) > 1:
-                    if element.attrs['class'][1] == 'kicktipp-time':
-                        class_name = 'kicktipp-time'
-                    elif element.attrs['class'][0] == 'kicktipp-wettquote':
-                        class_name = 'kicktipp-wettquote'
-
-                if class_name == 'kicktipp-time':  # a date => new row (new match)
-                    if teams_temp:
-                        teams.append(teams_temp)
-                        teams_temp = []
-                    if quoten_temp:
-                        quoten.append(quoten_temp)
-                        quoten_temp = []
-                    if wettquoten_temp:
-                        wettquoten.append(wettquoten_temp)
-                        wettquoten_temp = []
-                elif class_name == 'kicktipp-wettquote':  # wettquote
-                    wettquoten_temp.append(float(element.string.replace(',', '.')))
-                elif class_name is None:
-                    if re.match('[0-9]{2} - [0-9]{2} - [0-9]{2}', element.string):  # quoten (Punkte)
-                        quoten_temp = re.findall(r'\d+', element.string)
-                        quoten_temp = [int(_) for _ in quoten_temp]
-                    elif not re.match('[0-9]:[0-9]', element.string):  # not a score (e.g. '2:1')
-                        # it is a team name
-                        teams_temp.append(element.string)
-
-            if teams_temp:
-                teams.append(teams_temp)
-            if quoten_temp:
-                quoten.append(quoten_temp)
-            if wettquoten_temp:
-                wettquoten.append(wettquoten_temp)
-
-            return teams, quoten, wettquoten
-        else:
-            return None
-
     def read_predictions(self, member, matchday):
         """ Reads predictions from a member for a specific matchday
 
@@ -326,25 +224,28 @@ class KicktippAPI:
               + str(member_id)
         if self._browser_open(url):
             soup = self._browser.get_current_page()
-            data = soup.find_all('td', {"class": 'nw'})
+            data = soup.find_all('td', {'class': 'nw'})
 
-            tipps = pd.DataFrame(columns=['team1', 'team2', 'tipp1', 'tipp2', 'tipp_string'])
+            tipps = pd.DataFrame(columns=['team1', 'team2', 'tipp1', 'tipp2'])
 
             team1 = []
             team2 = []
             tipp1 = []
             tipp2 = []
-            tipp_string = []
 
             team_names_read = 0
             for el in data:
                 if el.string is not None:
-                    if re.match('^[a-zA-ZäöüÄÖÜß_\-\s]+$',
-                                el.string):  # a team name (including Umlauts, hyphen and whitespace)
+                    if len(el.find_all()) > 0:
+                        # the element has subtags => This is probably a strangely formatted score ("Ergebnis")
+                        # which we will ignore
+                        pass
+                    elif re.match('^[a-zA-Z0-9ZäöüÄÖÜß._\-\s]+$', el.string):
+                        # a team name (including Umlauts, numbers (e.g. "Mainz 05"), period (e.g. "1. FC Köln")
+                        # hyphen and whitespace)
                         if team_names_read == 2:
                             tipp1.append(None)
                             tipp2.append(None)
-                            tipp_string.append(None)
                             team_names_read = 0
                         if team_names_read == 0:
                             team1.append(el.string)
@@ -353,20 +254,18 @@ class KicktippAPI:
                             team2.append(el.string)
                             team_names_read = 2
                     elif re.match('[0-9]:[0-9]', el.string):  # a score
-                        tipp1.append(int(el.string.split(':')[0]))
-                        tipp2.append(int(el.string.split(':')[1]))
-                        tipp_string.append(str(el.string))
+                        tipp_score = self._parse_score(el.string)
+                        tipp1.append(tipp_score[0])
+                        tipp2.append(tipp_score[1])
                         team_names_read = 0
             if team_names_read == 2:
                 tipp1.append(None)
                 tipp2.append(None)
-                tipp_string.append(None)
 
             tipps['team1'] = team1
             tipps['team2'] = team2
             tipps['tipp1'] = tipp1
             tipps['tipp2'] = tipp2
-            tipps['tipp_string'] = tipp_string
 
             return tipps
 
@@ -376,7 +275,7 @@ class KicktippAPI:
         Returns
         -------
         pandas.DataFrame
-            Dataframe containing the members names and IDs
+            Dataframe containing the member's names and IDs
         """
         url = self._url + 'gesamtuebersicht'
         if self._browser_open(url):
@@ -397,7 +296,7 @@ class KicktippAPI:
 
             return self.members
 
-    def submit_predictions(self, scores):
+    def submit_predictions(self, scores, matchday=None, n_matches=9):
         """ Uploads the matchday predictions to the kicktipp website
 
         The user must be logged in.
@@ -406,26 +305,111 @@ class KicktippAPI:
         ----------
         scores : 2-d array with 2 columns
             Containing the predicted scores
+        matchday : int, optional
+            Number of matchday to be read. If None (default), the upcoming matchday is read.
+        n_matches : int
+            Number of matches per matchday, defaults to 9
 
         """
-        # TODO: Test new mechanicalsoup implementation
-        if self._browser_open(self._url_tippabgabe):
-            tipp_form = self._browser.select_form(nr=0)
+        if matchday is None:
+            url = self._url_tippabgabe
+        else:
+            url = self._url_tippabgabe + '?&spieltagIndex=' + str(matchday)
 
-            # count number of matches that are not played yet
-            n_matches = 0
-            for element in tipp_form.keys():
-                if "heimTipp" in element:
-                    n_matches += 1
+        if self._browser_open(url):
+            tipp_form = self._browser.select_form('form[id="tippabgabeForm"]')
+            soup = self._browser.get_current_page()
 
-            # "match_number+9-n_matches": matches that are already played are ignored
+            # Get the names of the individual forms
+            # The forms have the name "spieltippForms[ID].heimTipp" and "spieltippForms[ID].gastTipp", where ID
+            # is an integer specifying the individual form.
+            # Get these IDs from the form:
+            form_ids = []
+            for tag in soup.find_all('td', {'class':'kicktipp-tippabgabe'}): # iterate over tags in form
+                id_ = int(re.findall(r'\d+', tag.find_all()[0]['name'])[0])
+                form_ids.append(id_)
+                # Example for tag.find_all()[0]['name']: "spieltippForms[697554851].tippAbgegeben"
+
+            n_not_played = len(form_ids)  # number of matches of this matchday not played yet
+
+            # iteration starts at "n_matches-n_not_played": matches that are already played are ignored
             # e.g. if you submit your scores on saturday, the score from the friday's match will be ignored.
-            match_number = 0
-            for element in tipp_form.keys():
-                if "heimTipp" in element:
-                    tipp_form[element] = scores[match_number+9-n_matches][0]
-                elif "gastTipp" in element:
-                    tipp_form[element] = scores[match_number+9-n_matches][1]
-                    match_number += 1
+            for idx, score in enumerate(scores[n_matches-n_not_played:]):
+                form_name = 'spieltippForms[' + str(form_ids[idx]) + ']'
+                tipp_form[form_name + '.heimTipp'] = score[0]
+                tipp_form[form_name + '.gastTipp'] = score[1]
 
             self._browser.submit_selected()
+
+    def _parse_score(self, element)->list:
+        """ Generic method to parse a score.
+
+        The method tries to pick the appropriate method according to the passed datatype of element
+
+        Parameters
+        ----------
+        element : {str, bs4.element.Tag}
+            Element to be parsed
+
+        Returns
+        -------
+        list
+            List with two values: score of the two teams, e.g. [3, 2]
+        """
+        if isinstance(element, str):
+            score = self._score_from_str(element)  # type: list
+        else:
+            score = self._score_from_tag(element)  # type: list
+
+        return score
+
+    @staticmethod
+    def _score_from_str(score_str)->list:
+        """ Parses score from a string
+
+        Parameters
+        ----------
+        score_str : str
+            String containing the score in the format "3:2"
+
+        Returns
+        -------
+        list
+            List with two values: score of the two teams, e.g. [3, 2]
+        """
+        score_team1 = int(score_str.split(':')[0])
+        score_team2 = int(score_str.split(':')[1])
+
+        return [score_team1, score_team2]
+
+    @staticmethod
+    def _score_from_tag(tag)->list:
+        """ Parses score from a beautiful soup tag
+
+        As the kicktipp website seems to regularly change their tag syntax, this function might be adapted in the
+        future.
+        This works for the 2019/20 season.
+
+        Parameters
+        ----------
+        tag : bs4.element.Tag
+
+        Returns
+        -------
+        list
+            List with two values: score of the two teams, e.g. [3, 2]
+        """
+
+        '''
+        The passed tag is in the following form:
+        <td class="nw"><span class ="kicktipp-ergebnis"><span class="kicktipp-abschnitt kicktipp-abpfiff"> 
+        <span class="kicktipp-heim">3</span><span class="kicktipp-tortrenner" >:</span>
+        <span class ="kicktipp-gast">2</span></span></span></td>
+        
+        The score is hidden in "kicktipp-heim" (3) and "kicktipp-gast (2).
+        '''
+        score_team1 = int(tag.find_all('span', {'class': 'kicktipp-heim'})[0].string)
+        score_team2 = int(tag.find_all('span', {'class': 'kicktipp-gast'})[0].string)
+
+        return [score_team1, score_team2]
+
