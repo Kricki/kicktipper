@@ -60,6 +60,7 @@ kicktipper.spec
 
 kicktipper/dev
 dev/
+data/
 kicktipper/\.ipynb_checkpoints/
 
 kicktipper/\.idea/
