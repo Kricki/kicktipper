@@ -4,11 +4,8 @@ import tkinter as tk
 from tkinter import messagebox as tkmessagebox
 import configparser
 
-import tipper
-import gui
-
-__author__ = 'Kricki (https://github.com/Kricki)'
-__version__ = "0.1.3"
+from . import tipper
+from . import gui
 
 
 class Model:

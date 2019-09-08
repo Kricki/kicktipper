@@ -2,10 +2,7 @@
 import tkinter as tk
 from tkinter import ttk
 
-import tkadd
-
-__author__ = 'Kricki (https://github.com/Kricki)'
-__version__ = "0.1.3"
+from . import tkadd
 
 
 class MainWidgets(ttk.Frame):

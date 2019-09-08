@@ -5,9 +5,6 @@ from difflib import SequenceMatcher
 
 """
 
-__author__ = 'Kricki (https://github.com/Kricki)'
-
-
 def similar(a, b):
     """ Compute "similarity" between two objects a and b.
 

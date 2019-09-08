@@ -1,37 +1,46 @@
 # -*- coding: utf-8 -*-
 import numpy as np
-import mechanicalsoup
-import re  # RegExp
-import sqlite3
 import pandas as pd
 
-import tools
+import sqlite3
 
-
-__author__ = 'Kricki (https://github.com/Kricki)'
-__version__ = "0.1.4"
+from . import tools
 
 
 class Team:
-    """    Representes a Team
+    """ Representation of a team
+
+    Attributes
+    ----------
+    name : str
+        Team's name
+    goals_per_season : int
+        Total number of goals the team is exptected to score in a complete season.
+        This attibute can be used to calculate the team's offense strength
+        (see compute_offense_strength_from_scored_goals).
+    offense_strength : float
+        Number indicating the team's offense strength
+    defense_strength : float
+        Number indicating the team's defense strength
     """
+
     no_of_teams = 0
 
     ''' Constructor'''
-    def __init__(self, name):
-        """ Constructor for Team object
-
-        :param string name: Team's name
-        :return: Team object
-
+    def __init__(self, name=''):
         """
 
+        Parameters
+        ----------
+        name : str
+            Team's name
+        """
         self._name = name
-        self._scored_goals = 0
+        self._goals_per_season = 0
         self._offense_strength = 0
         self._defense_strength = 0
 
-        Team.no_of_teams += 1
+        Team.no_of_teams += 1  # ToDo: obosolete? Ueberhaupt sinnvoll, vernuenftige Datenkapselung?
 
         self._index = Team.no_of_teams
 
@@ -44,12 +53,12 @@ class Team:
         self._name = new_name
 
     @property
-    def scored_goals(self):
-        return self._scored_goals
+    def goals_per_season(self):
+        return self._goals_per_season
 
-    @scored_goals.setter
-    def scored_goals(self, value):
-        self._scored_goals = value
+    @goals_per_season.setter
+    def goals_per_season(self, value):
+        self._goals_per_season = value
 
     @property
     def offense_strength(self):
@@ -72,16 +81,14 @@ class Team:
         return self._index
 
     def __del__(self):
-        """ Desctructor of Team object
-        """
         Team.no_of_teams -= 1
 
     def compute_offense_strength_from_scored_goals(self, home_team_advantage, mu):
-        self.offense_strength = (self.scored_goals - 17*home_team_advantage)/(mu*17)
+        self._offense_strength = (self._goals_per_season - 17*home_team_advantage)/(mu*17)
 
 
-class Liga:
-    """ Liga is a container for Team objects
+class League:
+    """ League is a container for Team objects
     """
 
     no_of_teams = 0
@@ -269,22 +276,38 @@ class Liga:
 
 
 class ScoreCalculator:
-    """ Functions to generate match scores.
+    """ Methods to generate match scores.
 
+    Attributes
+    ----------
+    mu : float
+        Expectation value for the total number of scored goals for the match
+    home_team_advantage : float
+        Factor to account for the advantage of the home team (extra goals scored by the home team)
+    team1 : Team
+        Home team
+    team2 : Team
+        Away team
     """
 
-    @staticmethod
-    def expected_score(mu, home_team_advantage, team1, team2):
-        """ Calculates "expected score" for the match between team1 and team2
+    def __init__(self):
+        self.mu = 2.5
+        self.home_team_advantage = 0
+        self.team1 = Team()
+        self.team2 = Team()
 
-        :param double mu: expectation value for the number of scored goals for the match
-        :param double home_team_advantage: Factor to account for the advantage of the home team
-        :param Team team1: Home team
-        :param Team team2: Away team
-        :return: int score for team 1 and score for team2
-        """
-        score1 = mu/2*team1.offense_strength - team2.defense_strength + home_team_advantage
-        score2 = mu/2*team2.offense_strength - team1.defense_strength
+    def expected_score(self):
+        """ Calculates "expected score" for a match from individual team strengths.
+
+        The calculation takes into account the teams offense strength, defense strength and the home team advantage.
+
+        Returns
+        -------
+        int, int
+            Expected score of team1 and team2
+        """ 
+        score1 = self.mu/2*self.team1.offense_strength - self.team2.defense_strength + self.home_team_advantage
+        score2 = self.mu/2*self.team2.offense_strength - self.team1.defense_strength
 
         d = score1-score2
 
@@ -299,22 +322,25 @@ class ScoreCalculator:
 
         return int(score1), int(score2)
 
-    @staticmethod
-    def random_score(mu, draw_allowed=True):
-        """ Generates random score, where the individual team score is drawn from a Poissonian distribution
-        :param double mu: the expectation value for the number of scored goals for the match. I.e. mu/2 is the
-            expectation value for the number of goals scored per team.
-        :param bool draw_allowed: A draw is a legal result. Default: True
+    def random_score(self, draw_allowed=True):
+        """ Generates random score, where the individual team score is drawn from a Poissonian distribution.
 
-        :return: int score for team 1 and score for team2
+        Parameters
+        ----------
+        draw_allowed : bool, optional
+            Indicates if a draw is a legal result. Default: True
 
+        Returns
+        -------
+        int, int
+            Expected score of team1 and team2
         """
 
         result_ok = False
-
+        score1, score2 = 0, 0
         while not result_ok:
-            score1 = np.random.poisson(mu/2)
-            score2 = np.random.poisson(mu/2)
+            score1 = np.random.poisson(self.mu/2)
+            score2 = np.random.poisson(self.mu/2)
             if draw_allowed:
                 result_ok = True
             else:
@@ -323,358 +349,40 @@ class ScoreCalculator:
 
         return score1, score2
 
+    @staticmethod
+    def probability_from_odd(rawodd, overround):
+        """ Compute outcome probability from bookmakers odds
 
-class KicktippAPI:
-    """ API for communication with kicktipp.de website
 
-    Uses mechanicalsoup library
 
-    """
-
-    def __init__(self, name):
-        self._name = name
-        self._url = "https://www.kicktipp.de/" + self._name + "/"
-        self._url_login = self._url + "profil/login"
-        self._url_logout = self._url + "profil/logout"
-        self._url_tippabgabe = self.url + "tippabgabe"
-
-        self._members = pd.DataFrame(columns=['name', 'id'])
-
-        self._browser = mechanicalsoup.StatefulBrowser(soup_config={'features': 'html5lib'})
-
-    @property
-    def name(self):
-        return self._name
-
-    @name.setter
-    def name(self, value):
-        self._name = value
-        self._url = "https://www.kicktipp.de/" + self._name + "/"
-        self._url_login = self._url + "profil/login"
-        self._url_logout = self._url + "profil/logout"
-        self._url_tippabgabe = self.url + "tippabgabe"
-
-    @property
-    def url(self):
-        return self._url
-
-    @url.setter
-    def url(self, value):
-        self._url = value
-
-    @property
-    def url_login(self):
-        return self._url_login
-
-    @url_login.setter
-    def url_login(self, value):
-        self._url_login = value
-
-    @property
-    def url_logout(self):
-        return self._url_logout
-
-    @url_logout.setter
-    def url_logout(self, value):
-        self._url_logout = value
-
-    @property
-    def url_tippabgabe(self):
-        return self._url_tippabgabe
-
-    @url_tippabgabe.setter
-    def url_tippabgabe(self, value):
-        self._url_tippabgabe = value
-
-    @property
-    def members(self):
-        return self._members
-
-    @property
-    def browser(self):
-        return self._browser
-
-    def _browser_open(self, url):
-        """ Open URL. The objects self.browser object is updated.
+        See: Palomino et al. "Information salience, investor sentiment, and stock returns:
+         The case of British soccer betting." Journal of Corporate Finance 15.3 (2009): 368-387.
 
         Parameters
         ----------
-        url : str
-            URL of website
+        rawodd : float
+            The "raw" quoted bookmakers odd for the outcome of a specific event (e.g. win of team 1)
+
+        overround : float
+            Overround
+            The raw quoted bookmakers odds are no “honest” odds but are the payout amounts for successful bets which
+            has two important implications: (1) They still contain the stake, i.e., the payment for placing the bet
+            (2) More importantly, the bookmakers odds contain a profit margin, the so-called “overround”, which
+            means that the “true” underlying odds are actually larger.
+
+            The overround must be choosen such that the sum of all probabilities for associated events sums to 1.
+            E.g. win, draw, loss are three associataed events which probabilites must sum to 1.
 
         Returns
         -------
-        bool
-            True if opening was successful, False otherwise.
+        float
+            Probability (between 0 and 1) of the events outcome
 
         """
-        self.browser.open(url)
-        if self.browser.get_url() == url:
-            return True
-        else:
-            return False
+        # overround = 1.1 for bwin
+        odd = (rawodd-1)*overround
+        return 1-odd/(1+odd)
 
-    def login(self, username, password):
-        """ Logs into the kicktipp website in the current group.
-
-        Parameters
-        ----------
-        username : str
-        password : str
-
-        Returns
-        -------
-        bool
-            True if login was successful, False otherwise.
-
-        """
-        self.browser.open(self._url_login)
-
-        # Select the signup form
-        self.browser.select_form('form[action="/' + self._name + '/profil/loginaction"]')
-
-        # Fill it out and submit
-        self.browser['kennung'] = username
-        self.browser['passwort'] = password
-        self.browser.submit_selected()
-
-        if self.browser.get_url() == self.url:  # redirection to group page successful?
-            return True
-        else:
-            return False
-
-    def logout(self):
-        """ Logs out from current account.
-
-        Returns
-        -------
-        bool
-            True if logout was successful, False otherwise
-
-        """
-        return self._browser_open(self.url_logout)
-
-    def fetch_games(self):
-        """ Fetches the upcoming matchday from the Kicktipp website.
-
-        The user must be logged in.
-
-        :return: 9x2 matrix (9 rows, 2 columns), each row containing the name of the teams for one match
-                None is returned, if fetching was not successful.
-        """
-        if self._browser_open(self.url_tippabgabe):
-            soup = self.browser.get_current_page() # get BeautifulSoup object from mechanicalsoup browser
-            data = soup.find_all('td', {'class': 'nw'})
-
-            teams = []
-            for element in data:
-                if element.string is not None:  # not another id tag (element is not a string)
-                    if not re.match('^[0-9]{2}\.', element.string):  # not a date. RegExp: First two symbols are digits, followed by dot.
-                        if not re.match('[0-9]:[0-9]', element.string):  # not a score (e.g. '2:1')
-                            if not re.match('[0-9]\.[0-9]', element.string):  # not a betting odd (e.g. "1.85")
-                                teams.append(element.string)
-
-            games = [[None]*2 for _ in range(9)]
-
-            for kk in range(9):
-                games[kk][0] = teams[2*kk]
-                games[kk][1] = teams[2*kk+1]
-
-            return games
-        else:
-            return None
-
-    def fetch_games_world_cup(self, matchday=None):
-        """Fetches the matchday from the Kicktipp website. Version for world cups.
-
-        The user must be logged in.
-
-        Parameters
-        ----------
-        matchday : int
-            Specifies the matchday to be fetched. If None (default) the upcoming matchday is fetched.
-
-        Returns
-        -------
-        list of teams, list of quoten, list of wettquoten
-
-        """
-        if matchday is None:
-            url = self.url_tippabgabe
-        else:
-            url = self.url_tippabgabe + '?&spieltagIndex=' + str(matchday)
-        if self._browser_open(url):
-            soup = self.browser.get_current_page()
-            data = soup.find_all('td', {'class': 'nw'})
-
-            teams = []
-            quoten = []
-            wettquoten = []
-
-            teams_temp = []
-            quoten_temp = []
-            wettquoten_temp = []
-            for element in data:
-                class_name = None
-                if len(element.attrs['class']) > 1:
-                    if element.attrs['class'][1] == 'kicktipp-time':
-                        class_name = 'kicktipp-time'
-                    elif element.attrs['class'][0] == 'kicktipp-wettquote':
-                        class_name = 'kicktipp-wettquote'
-
-                if class_name == 'kicktipp-time':  # a date => new row (new match)
-                    if teams_temp:
-                        teams.append(teams_temp)
-                        teams_temp = []
-                    if quoten_temp:
-                        quoten.append(quoten_temp)
-                        quoten_temp = []
-                    if wettquoten_temp:
-                        wettquoten.append(wettquoten_temp)
-                        wettquoten_temp = []
-                elif class_name == 'kicktipp-wettquote':  # wettquote
-                    wettquoten_temp.append(float(element.string.replace(',', '.')))
-                elif class_name is None:
-                    if re.match('[0-9]{2} - [0-9]{2} - [0-9]{2}', element.string):  # quoten (Punkte)
-                        quoten_temp = re.findall(r'\d+', element.string)
-                        quoten_temp = [int(_) for _ in quoten_temp]
-                    elif not re.match('[0-9]:[0-9]', element.string):  # not a score (e.g. '2:1')
-                        # it is a team name
-                        teams_temp.append(element.string)
-
-            if teams_temp:
-                teams.append(teams_temp)
-            if quoten_temp:
-                quoten.append(quoten_temp)
-            if wettquoten_temp:
-                wettquoten.append(wettquoten_temp)
-
-            return teams, quoten, wettquoten
-        else:
-            return None
-
-    def read_tipps(self, member, matchday):
-        """ Reads Tipps from a member for a specific matchday
-
-        Parameters
-        ----------
-        member : str or int
-            Name or ID of member (see self.members)
-        matchday : int
-            Matchday to be read
-
-        Returns
-        -------
-        pd.DataFrame
-            Dataframe containing the tipps
-        """
-        if type(member) is str:  # assume the member name is passed => convert to ID
-            member_id = self._members[self._members['name'] == member]['id'].item()
-        else:
-            member_id = member
-        url = self.url + 'tippuebersicht/tipper?spieltagIndex=' + str(matchday) + '&rankingTeilnehmerId=' \
-              + str(member_id)
-        if self._browser_open(url):
-            soup = self.browser.get_current_page()
-            data = soup.find_all('td', {"class": 'nw'})
-
-            tipps = pd.DataFrame(columns=['team1', 'team2', 'tipp1', 'tipp2', 'tipp_string'])
-
-            team1 = []
-            team2 = []
-            tipp1 = []
-            tipp2 = []
-            tipp_string = []
-
-            team_names_read = 0
-            for el in data:
-                if el.string is not None:
-                    if re.match('^[a-zA-ZäöüÄÖÜß_\-\s]+$',
-                                el.string):  # a team name (including Umlauts, hyphen and whitespace)
-                        if team_names_read == 2:
-                            tipp1.append(None)
-                            tipp2.append(None)
-                            tipp_string.append(None)
-                            team_names_read = 0
-                        if team_names_read == 0:
-                            team1.append(el.string)
-                            team_names_read = 1
-                        elif team_names_read == 1:
-                            team2.append(el.string)
-                            team_names_read = 2
-                    elif re.match('[0-9]:[0-9]', el.string):  # a score
-                        tipp1.append(int(el.string.split(':')[0]))
-                        tipp2.append(int(el.string.split(':')[1]))
-                        tipp_string.append(str(el.string))
-                        team_names_read = 0
-            if team_names_read == 2:
-                tipp1.append(None)
-                tipp2.append(None)
-                tipp_string.append(None)
-
-            tipps['team1'] = team1
-            tipps['team2'] = team2
-            tipps['tipp1'] = tipp1
-            tipps['tipp2'] = tipp2
-            tipps['tipp_string'] = tipp_string
-
-            return tipps
-
-    def read_members(self):
-        """ Reads the members and corresponding IDs and stores it in the pd.DataFrame self.members
-
-        Returns
-        -------
-        pd.DataFrame
-            Dataframe containing the members names and IDs
-        """
-        url = self.url + 'gesamtuebersicht'
-        if self._browser_open(url):
-            soup = self.browser.get_current_page()
-            data = soup.find_all('td', {"class": 'name'})
-
-            names = []
-            for el in data:
-                names.append(str(el.string))
-
-            data = soup.find_all('tr', {"class": 'teilnehmer'})  # "TeilnehmerID"
-            ids = []
-            for el in data:
-                ids.append(int(el.attrs['data-teilnehmer-id']))
-
-            self._members['name'] = names
-            self._members['id'] = ids
-
-            return self._members
-
-    def submit_scores(self, scores):
-        """ Uploads the matchday scores to the kicktipp website
-
-        The user must be logged in.
-
-        :param scores: 9x2 matrix contatining the scores (see model)
-        """
-        # TODO: Test new mechanicalsoup implementation
-        if self._browser_open(self.url_tippabgabe):
-            tipp_form = self.browser.select_form(nr=0)
-
-            # count number of matches that are not played yet
-            n_matches = 0
-            for element in tipp_form.keys():
-                if "heimTipp" in element:
-                    n_matches += 1
-
-            # "match_number+9-n_matches": matches that are already played are ignored
-            # e.g. if you submit your scores on saturday, the score from the friday's match will be ignored.
-            match_number = 0
-            for element in tipp_form.keys():
-                if "heimTipp" in element:
-                    tipp_form[element] = scores[match_number+9-n_matches][0]
-                elif "gastTipp" in element:
-                    tipp_form[element] = scores[match_number+9-n_matches][1]
-                    match_number += 1
-
-            self.browser.submit_selected()
 
 
 def defineTeams(home_team_advantage, mu):
