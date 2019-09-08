@@ -1,6 +1,6 @@
-===============================
-Kicktipper
-===============================
+# Kicktipper
+
+**Note: This is the legacy version. The API does probably not work with the kicktipp.de website.**
 
 Tool to upload automatically generated tipps to kicktipp.de
 
