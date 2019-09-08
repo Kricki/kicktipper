@@ -23,5 +23,6 @@ setup(
     classifiers=[f for f in CLASSIFIERS.split('\n') if f],
     install_requires=['numpy',
                       'mechanicalsoup',
-                      'pandas'],
+                      'pandas',
+                      'matplotlib'],
 )

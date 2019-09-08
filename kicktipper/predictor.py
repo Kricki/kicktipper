@@ -90,6 +90,7 @@ class MatchPredictor:
         ax.set_ylabel('Goals Team 1')
         ax.set_xlabel('Goals Team 2')
         ax.set_title('Score probabilites (%)')
+        # write probability (in %) in each element of the matrix
         for (j, i), label in np.ndenumerate(score_probs):
             ax.text(i, j, round(label*100, 1), ha='center', va='center')
         plt.show()
@@ -112,6 +113,7 @@ class MatchPredictor:
 
         plt.show()
 
+    @property
     def probs_tendency(self):
         """ Calculate the probability for the "tendency" of the outcome for a match played by two teams.
 
@@ -119,8 +121,6 @@ class MatchPredictor:
         -------
         list with 3 elements
             [probability team 1 wins, probability team 2 wins, probabilty for a draw]
-
-
         """
         p_team1 = np.sum(self.calculate_score_probs(mode='team1_wins'))
         p_team2 = np.sum(self.calculate_score_probs(mode='team2_wins'))
@@ -189,9 +189,10 @@ class MatchPredictor:
 
         return result, prob
 
-    def predict_score(self):
+    @property
+    def predicted_score(self):
         # 1) Calculate most likely tendency
-        tendency = np.argmax(self.probs_tendency())  # 0: team 1 wins, 1: team 2 wins, 2: draw
+        tendency = np.argmax(self.probs_tendency)  # 0: team 1 wins, 1: team 2 wins, 2: draw
 
         # 2) What is the most likely goal difference within the tendency
         if tendency == 0:
@@ -200,12 +201,9 @@ class MatchPredictor:
             mode = 'team2_wins'
         elif tendency == 2:
             mode = 'draws'
+        else:
+            raise(ValueError('Invalid value for tendendy'))
         d, _ = self.most_likely_goal_difference(mode=mode)
 
         # 3) What is the most likely result with the predicted goal difference?
         return self.most_likely_score(d=d, mode=mode)
-
-
-
-
-

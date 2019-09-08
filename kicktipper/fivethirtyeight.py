@@ -10,7 +10,7 @@ class FiveThirtyEight:
         self.url = 'https://projects.fivethirtyeight.com/soccer-api/club/spi_matches.csv'
         # see: https://github.com/fivethirtyeight/data/tree/master/soccer-spi
 
-        self._save_dir = './data'
+        self._save_dir = '../data'
 
     def read_data(self, filename=None, update=False):
         if filename is None:
