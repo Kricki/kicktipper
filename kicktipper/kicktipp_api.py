@@ -1,6 +1,7 @@
 import mechanicalsoup
 import re
 import pandas as pd
+import warnings
 
 
 class KicktippAPI:
@@ -133,10 +134,12 @@ class KicktippAPI:
             teams = []
             points = []
             odds = []
+            dates = []
 
             teams_temp = []
             quoten_temp = []
             wettquoten_temp = []
+            dates_temp = []
             for element in data:
                 class_name = None
                 if len(element.attrs['class']) > 1:
@@ -155,6 +158,12 @@ class KicktippAPI:
                     if wettquoten_temp:
                         odds.append(wettquoten_temp)
                         wettquoten_temp = []
+                    if dates_temp:
+                        dates.append(dates_temp)
+
+                    date = element.text
+                    if date:
+                        dates_temp = date
                 elif class_name == 'kicktipp-wettquote':  # wettquote
                     wettquoten_temp.append(float(element.string.replace(',', '.')))
                 elif class_name is None:
@@ -171,6 +180,8 @@ class KicktippAPI:
                 points.append(quoten_temp)
             if wettquoten_temp:
                 odds.append(wettquoten_temp)
+            if dates_temp:
+                dates.append(dates_temp)
 
             # Transpose the nested lists
             # see https://stackoverflow.com/questions/6473679/transpose-list-of-lists
@@ -178,12 +189,28 @@ class KicktippAPI:
             points = list(map(list, zip(*points)))
             odds = list(map(list, zip(*odds)))
 
-            # Create pands DataFrame
+            # Read matchday number
+            text = soup.find_all('div', {'class': 'prevnextTitle'})[0].get_text()
+            r = re.findall(r'\d+\. Spieltag', text)
+            md_no = None
+            if r:
+                md_no = int(re.findall(r'\d+', r[0])[0])
+
+            # consistency check
+            if matchday is not None:
+                if md_no != matchday:
+                    warnings.warn('Parsed matchday from website does not match the requested value.', UserWarning)
+
+            # Create pandas DataFrame
             n_games = len(teams[0])  # no of games = no of rows
-            col_names = ['team1', 'team2', 'points_win1', 'points_draw', 'points_win2',
+            md_no_col = [md_no]*n_games
+            col_names = ['matchday', 'date', 'team1', 'team2',
+                         'points_win1', 'points_draw', 'points_win2',
                          'odds_win1', 'odds_draw', 'odds_win2']
             df = pd.DataFrame(columns=col_names)
 
+            df['matchday'] = md_no_col
+            df['date'] = dates
             df['team1'] = teams[0]
             df['team2'] = teams[1]
             if len(points) == 3:
