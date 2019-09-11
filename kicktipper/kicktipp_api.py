@@ -2,6 +2,7 @@ import mechanicalsoup
 import re
 import pandas as pd
 import warnings
+import getpass
 
 
 class KicktippAPI:
@@ -46,6 +47,14 @@ class KicktippAPI:
         self._url_logout = self._url + "profil/logout"
         self._url_tippabgabe = self._url + "tippabgabe"
 
+    @staticmethod
+    def read_username_from_user_input():
+        return input('Username: ')
+
+    @staticmethod
+    def read_password_from_user_input():
+        return getpass.getpass('Password: ')
+
     def _browser_open(self, url):
         """ Open URL.
 
@@ -68,21 +77,27 @@ class KicktippAPI:
         else:
             return False
 
-    def login(self, username, password):
+    def login(self, username=None, password=None):
         """ Logs into the kicktipp website in the current group.
 
         Parameters
         ----------
         username : str
+            Username, optional. If not given, the user is prompted to type the username.
         password : str
-
+            Password, optional. If not given, the user is prompted to type the password.
         Returns
         -------
         bool
             True if login was successful, False otherwise.
 
         """
-        ## TODO: implement timeout
+        if username is None:
+            username = self.read_username_from_user_input()
+        if password is None:
+            password = self.read_password_from_user_input()
+
+        # TODO: implement timeout
         self._browser.open(self._url_login)
 
         # Select the signup form
@@ -368,7 +383,7 @@ class KicktippAPI:
 
             self._browser.submit_selected()
 
-    def _parse_score(self, element)->list:
+    def _parse_score(self, element) -> list:
         """ Generic method to parse a score.
 
         The method tries to pick the appropriate method according to the passed datatype of element
@@ -391,7 +406,7 @@ class KicktippAPI:
         return score
 
     @staticmethod
-    def _score_from_str(score_str)->list:
+    def _score_from_str(score_str) -> list:
         """ Parses score from a string
 
         Parameters
@@ -410,7 +425,7 @@ class KicktippAPI:
         return [score_team1, score_team2]
 
     @staticmethod
-    def _score_from_tag(tag)->list:
+    def _score_from_tag(tag) -> list:
         """ Parses score from a beautiful soup tag
 
         As the kicktipp website seems to regularly change their tag syntax, this function might be adapted in the
