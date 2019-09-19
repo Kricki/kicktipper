@@ -131,21 +131,24 @@ class TipperBundesliga:
             # see https://stackoverflow.com/questions/6473679/transpose-list-of-lists/6473727
             self._kicktipp_api.submit_predictions(scores=scores, matchday=md)
 
-    def store_data_for_matchday_to_file(self, filename=None, overwrite=False):
-        df = self.kicktipp_matches_read()
-        df_proj_score = self.projected_scores_for_matchday()
-        df_pred_score = self.predicted_scores_for_matchday()
+    def store_data_for_matchday_to_file(self, matchday=None, filename=None, overwrite=False):
+        df = self.kicktipp_matches_read(matchday=matchday)
+        df_proj_score = self.projected_scores_for_matchday(matchday=matchday)
+        df_pred_score = self.predicted_scores_for_matchday(matchday=matchday)
         df = df.drop('date', 1)
         df['proj_score1'] = df_proj_score['proj_score1']
         df['proj_score2'] = df_proj_score['proj_score2']
         df['pred_score1'] = df_pred_score['pred_score1']
         df['pred_score2'] = df_pred_score['pred_score2']
-        dt = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        df['timestamp'] = [dt]*len(df.index)
+        dt = datetime.now()
+        dtstr = dt.strftime('%Y-%m-%d %H:%M:%S')
+        dtstr2 = dt.strftime('%Y-%m-%d_%H-%M-%S')
+
+        df['timestamp'] = [dtstr]*len(df.index)
 
         if filename is None:
             md = df['matchday'][0]
-            filename = os.path.join(self._datapath, 'matchday' + str(md) + '.csv')
+            filename = os.path.join(self._datapath, 'matchday' + str(md).zfill(2) + '_' + dtstr2 + '.csv')
         else:
             filename = os.path.join(self._datapath, filename)
 
