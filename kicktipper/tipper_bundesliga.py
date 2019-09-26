@@ -122,7 +122,7 @@ class TipperBundesliga:
             Defining the matchday to predict and submit. Can be a list of integers, then the procedure is performed for
             all matchdays from the list.
         """
-        if isinstance(matchday, int):
+        if isinstance(matchday, int) or matchday is None:
             matchday = [matchday]  # matchday is not a list, so convert it to one
         for md in matchday:
             df_pred_scores = self.predicted_scores_for_matchday(matchday=md)
