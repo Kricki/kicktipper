@@ -58,6 +58,9 @@ class TipperBundesliga:
             df = self.align_team_names_in_df(df)
         return df
 
+    def projected_scores_update(self):
+        self.projected_scores = self.projected_scores_read(update=True)
+
     def kicktipp_matches_read(self, matchday=None, align_team_names=True):
         df = self._kicktipp_api.read_games(matchday)
         if align_team_names:
